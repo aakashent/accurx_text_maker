@@ -14,7 +14,7 @@ function populateDropdown() {
     Object.entries(linksData).forEach(([url, title]) => {
         const option = document.createElement('option');
         option.value = url;
-        option.textContent = title;
+        option.textContent = title;  // Use the title for dropdown display
         dropdown.appendChild(option);
     });
 }
@@ -23,9 +23,10 @@ function populateDropdown() {
 function displayLink() {
     const dropdown = document.getElementById('sitemapDropdown');
     const url = dropdown.value;
-    const title = linksData[url];
+    const title = linksData[url];  // Retrieve the title using the URL
     const linkDisplayBox = document.getElementById('linkDisplayBox');
     
+    // Update textarea with title and link
     linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n${url}`;
 }
 
