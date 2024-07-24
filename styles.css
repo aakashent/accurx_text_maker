@@ -6,13 +6,13 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
-    padding: 0;
-    font-size: 16px; /* Standard base font size */
+    padding: 10px;
+    font-size: 16px; /* Standard text size */
 }
 
 .container {
-    width: 90%;
-    max-width: 600px;
+    width: 100%; /* Use 100% of the viewport width */
+    max-width: 600px; /* But don't exceed 600px */
     padding: 20px;
     background-color: #fff;
     border-radius: 10px;
@@ -29,13 +29,11 @@ select, textarea, button {
     border: 1px solid #ccc;
     border-radius: 5px;
     box-sizing: border-box;
-    font-size: 16px; /* Ensures form elements use the same font size */
 }
 
 textarea {
     margin-top: 10px;
-    margin-bottom: 5px; /* Spacing between the textarea and button */
-    height: auto; /* Adjust height to fit content */
+    margin-bottom: 5px; /* Adjust spacing */
 }
 
 button {
@@ -43,9 +41,23 @@ button {
     color: white;
     border: none;
     cursor: pointer;
-    font-size: 16px; /* Explicit font size for buttons */
 }
 
 button:hover {
     background-color: #45a049;
+}
+
+/* Media Queries for smaller devices */
+@media (max-width: 600px) {
+    body {
+        font-size: 14px; /* Slightly smaller text on smaller screens */
+    }
+
+    .container {
+        padding: 10px; /* Less padding on smaller screens */
+    }
+
+    select, textarea, button {
+        font-size: 14px; /* Adjust font size for better readability */
+    }
 }
