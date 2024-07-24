@@ -32,9 +32,19 @@ select, textarea, button {
 }
 
 textarea {
+    width: 100%;
+    padding: 10px;
     margin-top: 10px;
-    margin-bottom: 5px; /* Adjust spacing */
+    margin-bottom: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Allows scrolling within the textarea */
+    min-height: 50px; /* Minimum height */
+    max-height: 150px; /* Maximum height to ensure copy button visibility */
+    resize: none; /* Disables manual resizing by the user */
 }
+
 
 button {
     background-color: #4CAF50;
