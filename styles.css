@@ -6,6 +6,8 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
+    padding: 0;
+    font-size: 16px; /* Standard base font size */
 }
 
 .container {
@@ -27,6 +29,13 @@ select, textarea, button {
     border: 1px solid #ccc;
     border-radius: 5px;
     box-sizing: border-box;
+    font-size: 16px; /* Ensures form elements use the same font size */
+}
+
+textarea {
+    margin-top: 10px;
+    margin-bottom: 5px; /* Spacing between the textarea and button */
+    height: auto; /* Adjust height to fit content */
 }
 
 button {
@@ -34,6 +43,7 @@ button {
     color: white;
     border: none;
     cursor: pointer;
+    font-size: 16px; /* Explicit font size for buttons */
 }
 
 button:hover {
