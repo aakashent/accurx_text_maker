@@ -7,7 +7,7 @@ body {
     height: 100vh;
     margin: 0;
     padding: 10px;
-    font-size: 16px; /* Standard text size */
+    font-size: 16px; /* Standard text size for desktop */
 }
 
 .container {
@@ -32,25 +32,19 @@ select, textarea, button {
 }
 
 textarea {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-    margin-bottom: 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box;
-    overflow-y: auto; /* Allows scrolling within the textarea */
+    overflow-y: auto; /* Allows scrolling within the textarea if needed */
     min-height: 50px; /* Minimum height */
     max-height: 150px; /* Maximum height to ensure copy button visibility */
     resize: none; /* Disables manual resizing by the user */
 }
-
 
 button {
     background-color: #4CAF50;
     color: white;
     border: none;
     cursor: pointer;
+    padding: 10px;
+    border-radius: 5px;
 }
 
 button:hover {
@@ -58,33 +52,26 @@ button:hover {
 }
 
 #dynamicLink {
+    display: block;
     color: blue;
     text-decoration: none;
-    padding: 10px 0;  // Adds vertical padding for better clickability
+    padding: 10px 0;
+    word-wrap: break-word; /* Ensures words can break and wrap */
+    word-break: break-all; /* Allows any character to be a break point */
+    overflow-wrap: break-word; /* Ensures proper word wrapping */
 }
 
 #dynamicLink:hover {
-    text-decoration: underline;  // Underline on hover for better user interaction feedback
+    text-decoration: underline; /* Underline on hover for better user interaction feedback */
 }
 
-#dynamicLink, #linkDisplayBox {
-    word-wrap: break-word; /* Breaks the words to ensure they wrap within the container */
-    word-break: break-all; /* Breaks the word at any character to prevent overflow */
-    white-space: normal; /* Allows text to wrap to the next line */
-    overflow-wrap: break-word; /* Allows long words to be broken and wrap to the next line */
-}
-
-/* Media Queries for smaller devices */
+/* Responsive design adjustments for smaller screens */
 @media (max-width: 600px) {
-    body {
-        font-size: 14px; /* Slightly smaller text on smaller screens */
+    body, select, textarea, button {
+        font-size: 14px; /* Smaller font size for better readability on small devices */
     }
 
     .container {
-        padding: 10px; /* Less padding on smaller screens */
-    }
-
-    select, textarea, button {
-        font-size: 14px; /* Adjust font size for better readability */
+        padding: 10px; /* Less padding to fit smaller screens */
     }
 }
