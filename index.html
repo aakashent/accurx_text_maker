@@ -2,17 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sitemap Links</title>
+    <title>Link Dropdown and Copy Function</title>
     <link rel="stylesheet" href="styles.css"> <!-- Ensure this path is correct -->
 </head>
 <body>
-    <div class="container"> <!-- Container to centralize and frame content -->
+    <div class="container">
         <select id="sitemapDropdown" onchange="displayLink()">
             <!-- Options will be dynamically added here -->
         </select>
-        <div id="linkDisplay">
-            <!-- Link display message will appear here -->
-        </div>
+        <textarea id="linkDisplayBox" rows="3" readonly style="width: 100%; margin-top: 10px;"></textarea>
         <button id="copyButton">Copy Text</button>
     </div>
     <script src="script.js"></script>
