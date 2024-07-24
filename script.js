@@ -1,14 +1,16 @@
-let linksData = {}; // This will be populated by the JSON data
+// Assuming linksData is populated from a JSON file
+let linksData = {};
 
 // Fetch the JSON data
 fetch('links_titles.json')
-.then(response => response.json())
-.then(data => {
-    linksData = data;
-    populateDropdown();
-});
+    .then(response => response.json())
+    .then(data => {
+        linksData = data;
+        populateDropdown();
+    })
+    .catch(error => console.error('Failed to load JSON data:', error));
 
-// Function to populate the dropdown
+// Populate the dropdown with titles
 function populateDropdown() {
     const dropdown = document.getElementById('sitemapDropdown');
     Object.entries(linksData).forEach(([url, title]) => {
@@ -19,21 +21,31 @@ function populateDropdown() {
     });
 }
 
-// Function to display link and update textarea
+// Display the selected link in the textarea and adjust its height
 function displayLink() {
     const dropdown = document.getElementById('sitemapDropdown');
     const url = dropdown.value;
     const title = linksData[url];  // Retrieve the title using the URL
     const linkDisplayBox = document.getElementById('linkDisplayBox');
     
-    // Update textarea with title and link
     linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n${url}`;
+    adjustTextareaHeight(linkDisplayBox);
 }
 
-// Event listener for the Copy button
+// Dynamically adjust the height of the textarea to fit the content, up to a maximum
+function adjustTextareaHeight(textarea) {
+    textarea.style.height = 'auto'; // Reset height to recalculate
+    textarea.style.height = `${textarea.scrollHeight}px`; // Set height based on scroll height
+    if (textarea.scrollHeight > 150) {
+        textarea.style.height = '150px'; // Limit height to max-height
+        textarea.scrollTop = textarea.scrollHeight; // Scroll to bottom if content exceeds max-height
+    }
+}
+
+// Copy the content of the textarea to the clipboard
 document.getElementById('copyButton').addEventListener('click', () => {
     const textToCopy = document.getElementById('linkDisplayBox').value;
     navigator.clipboard.writeText(textToCopy)
         .then(() => alert('Text copied to clipboard!'))
-        .catch(err => console.error('Failed to copy text: ', err));
+        .catch(err => console.error('Failed to copy text:', err));
 });
