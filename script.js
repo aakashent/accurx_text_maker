@@ -1,5 +1,4 @@
-// Assuming linksData is populated from a JSON file
-let linksData = {};
+let linksData = {}; // This will be populated by the JSON data
 
 // Fetch the JSON data
 fetch('links_titles.json')
@@ -21,14 +20,17 @@ function populateDropdown() {
     });
 }
 
-// Display the selected link in the textarea and adjust its height
+// Display the selected link in the textarea and update the anchor tag
 function displayLink() {
     const dropdown = document.getElementById('sitemapDropdown');
     const url = dropdown.value;
     const title = linksData[url];  // Retrieve the title using the URL
     const linkDisplayBox = document.getElementById('linkDisplayBox');
+    const dynamicLink = document.getElementById('dynamicLink');
     
     linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n${url}`;
+    dynamicLink.href = url; // Set the href attribute of the anchor tag
+    dynamicLink.textContent = 'Click here to visit: ' + title; // Update the text to display
     adjustTextareaHeight(linkDisplayBox);
 }
 
