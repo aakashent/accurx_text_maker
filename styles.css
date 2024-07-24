@@ -67,6 +67,13 @@ button:hover {
     text-decoration: underline;  // Underline on hover for better user interaction feedback
 }
 
+#dynamicLink, #linkDisplayBox {
+    word-wrap: break-word; /* Breaks the words to ensure they wrap within the container */
+    word-break: break-all; /* Breaks the word at any character to prevent overflow */
+    white-space: normal; /* Allows text to wrap to the next line */
+    overflow-wrap: break-word; /* Allows long words to be broken and wrap to the next line */
+}
+
 /* Media Queries for smaller devices */
 @media (max-width: 600px) {
     body {
