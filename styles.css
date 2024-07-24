@@ -1,0 +1,57 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    width: 90%;
+    max-width: 500px; /* Sets a maximum width for larger screens */
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1); /* Adds a subtle shadow for depth */
+    background-color: white;
+    border-radius: 8px;
+}
+
+select, button {
+    font-size: 16px;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    display: block;
+    width: 100%; /* Makes width consistent and full within the container */
+}
+
+button {
+    background-color: #4CAF50; /* Green background */
+    color: white; /* White text */
+    border: none; /* No borders */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background 0.3s ease;
+}
+
+button:hover {
+    background-color: #45a049; /* Darker green background on hover */
+}
+
+#linkDisplay {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #fff;
+    border-left: 5px solid #4CAF50;
+    font-size: 16px;
+}
+
+/* Ensures that the design remains functional on smaller screens */
+@media (max-width: 600px) {
+    .container {
+        width: 100%;
+        max-width: none;
+    }
+}
