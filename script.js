@@ -30,7 +30,7 @@ function displayLink() {
     
     linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n${url}`;
     dynamicLink.href = url; // Set the href attribute of the anchor tag
-    dynamicLink.textContent = 'Click here to visit: ' + title; // Update the text to display
+    dynamicLink.textContent = url; // Display the URL as the link text
     adjustTextareaHeight(linkDisplayBox);
 }
 
@@ -40,7 +40,6 @@ function adjustTextareaHeight(textarea) {
     textarea.style.height = `${textarea.scrollHeight}px`; // Set height based on scroll height
     if (textarea.scrollHeight > 150) {
         textarea.style.height = '150px'; // Limit height to max-height
-        textarea.scrollTop = textarea.scrollHeight; // Scroll to bottom if content exceeds max-height
     }
 }
 
