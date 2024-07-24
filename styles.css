@@ -57,6 +57,16 @@ button:hover {
     background-color: #45a049;
 }
 
+#dynamicLink {
+    color: blue;
+    text-decoration: none;
+    padding: 10px 0;  // Adds vertical padding for better clickability
+}
+
+#dynamicLink:hover {
+    text-decoration: underline;  // Underline on hover for better user interaction feedback
+}
+
 /* Media Queries for smaller devices */
 @media (max-width: 600px) {
     body {
