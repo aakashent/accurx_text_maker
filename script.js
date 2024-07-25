@@ -28,7 +28,7 @@ function displayLink() {
     const linkDisplayBox = document.getElementById('linkDisplayBox');
     const dynamicLink = document.getElementById('dynamicLink');
     
-    linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n${url}`;
+    linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n\n${url}`;
     dynamicLink.href = url; // Set the href attribute of the anchor tag
     dynamicLink.textContent = url; // Display the URL as the link text
     adjustTextareaHeight(linkDisplayBox);
