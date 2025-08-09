@@ -1,20 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
+<!-- v1.2.1 (2025-08-09) Accurx Text Maker – ENT categories + delete + export -->
+<!doctype html>
+<html lang="en-GB">
 <head>
-    <meta charset="UTF-8">
-    <title>Create Message</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="styles.css"> <!-- Ensure this path is correct -->
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Accurx Text Maker</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <div class="container">
-        <select id="sitemapDropdown" onchange="displayLink()">
-            <!-- Options will be dynamically added here -->
-        </select>
-        <a href="" id="dynamicLink" target="_blank" style="margin-top: 10px; display: block; color: blue;"></a>
-        <textarea id="linkDisplayBox" rows="4" readonly style="width: 100%; margin-top: 10px; margin-bottom: 10px"></textarea>
-        <button id="copyButton">Copy Text</button>
+  <header class="container">
+    <h1>Accurx Text Maker</h1>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search titles/text…" />
+      <select id="category">
+        <option value="">All categories</option>
+      </select>
+      <span id="counter" aria-live="polite">0/3 selected</span>
+
+      <label class="toggle" title="Show deleted items">
+        <input type="checkbox" id="showDeleted" />
+        <span>Show deleted</span>
+      </label>
+
+      <button id="exportBtn" class="btn btn-ghost" title="Download templates.json">Export</button>
+      <button id="themeToggle" class="btn btn-ghost" title="Toggle theme" aria-label="Toggle theme">Theme</button>
     </div>
-    <script src="script.js"></script>
+  </header>
+
+  <main class="container layout">
+    <section>
+      <ul id="list" class="card-list" aria-label="Templates"></ul>
+    </section>
+
+    <section class="composer">
+      <div class="composer-head">
+        <h2>Preview</h2>
+        <button id="copyBtn" class="btn" disabled>Copy text</button>
+      </div>
+      <textarea id="output" rows="14" readonly placeholder="Select up to 3 templates…"></textarea>
+      <p class="hint">Selected items are concatenated in the order you tick them. Max 3.</p>
+    </section>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
 </body>
 </html>
