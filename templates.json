@@ -1,0 +1,442 @@
+[
+  {
+    "url": "https://www.entuk.org/patients/conditions/1/mastoid_surgery_cholesteatoma",
+    "title": "Mastoid Surgery / Cholesteatoma | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/10/middle_ear_infections_otitis_media_under_review",
+    "title": "Middle Ear Infections (Otitis Media) - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/11/outer_ear_infections_otitis_externa_under_review",
+    "title": "Outer Ear Infections (Otitis Externa) - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/11/outer_ear_infections_otitis_externa",
+    "title": "Outer Ear Infections (Otitis Externa) - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/13/menires_disease_under_review",
+    "title": "Menière’s disease - UNDER REVIEW | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/14/otosclerosis_and_stapedotomy",
+    "title": "Otosclerosis and Stapedotomy | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/16/protruding_ears_bat_ears_pinnaplasty_under_review",
+    "title": "Protruding ears / bat ears / pinnaplasty - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/17/tinnitus_ringing_in_the_ears",
+    "title": "Tinnitus (ringing in the ears) | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/18/vertigo_under_review",
+    "title": "Vertigo - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/19/facial_skin_lesions",
+    "title": "Facial Skin Lesions | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/19/facial_skin_lesions_under_review",
+    "title": "Facial Skin Lesions | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/2/conditions_and_surgery_of_the_ear_under_review",
+    "title": "Conditions and surgery of the ear - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/20/flexible_nasal_endoscopy",
+    "title": "Flexible Nasal Endoscopy | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/20/flexible_nasal_endoscopy_new",
+    "title": "Flexible Nasal Endoscopy | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/21/head_and_neck_cancer",
+    "title": "Head and Neck Cancer | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/23/neck_dissection",
+    "title": "Neck Dissection | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/27/adenoid_surgery",
+    "title": "Adenoid Surgery | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/27/adenoid_surgery_update",
+    "title": "Adenoid Surgery | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/27/adenoid_surgery_update/",
+    "title": "Adenoid Surgery | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/3/dizziness_under_review",
+    "title": "Dizziness - UNDER REVIEW | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/31/hoarseness_under_review",
+    "title": "Hoarseness - UNDER REVIEW | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/34/snoring_and_obstructive_sleep_apnoea_in_adults",
+    "title": "Snoring and obstructive sleep apnoea in adults | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/36/blocked_nose_under_review",
+    "title": "Blocked Nose - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/37/catarrh",
+    "title": "Catarrh | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/39/hayfever",
+    "title": "Hayfever | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/4/glue_ear_otitis_media_with_effusion_ome",
+    "title": "Glue Ear - Otitis Media with Effusion (OME) | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/40/nasal_injuries_under_review",
+    "title": "Nasal injuries - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/41/nasal_polyps_under_review",
+    "title": "Nasal polyps - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/42/nosebleeds_epistaxis",
+    "title": "Nosebleeds (Epistaxis) | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/43/rhinosinusitis_and_dairy_allergy_under_review",
+    "title": "Rhino-Sinusitis and Dairy Allergy - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/45/sinus_infection_sinusitis_under_review",
+    "title": "Sinus infection (Sinusitis) - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/46/rhinoplasty_under_review",
+    "title": "Rhinoplasty - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/48/tumours_of_the_nose_under_review",
+    "title": "Tumours of the nose - UNDER REVIEW | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/49/pharyngeal_pouch_surgery",
+    "title": "Pharyngeal pouch surgery | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/5/grommets_a_decisionmaking_aid_for_parents",
+    "title": "Grommets - A decision-making aid for parents | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/5/grommets_a_decisionmaking_aid_for_parents/",
+    "title": "Grommets - A decision-making aid for parents | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/50/hpv_and_throat_cancer",
+    "title": "HPV and throat cancer | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/51/microlaryngoscopy_an_operation_on_your_voicebox",
+    "title": "Microlaryngoscopy: an operation on your voicebox | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/51/microlaryngoscopy_an_operation_on_your_voicebox_new",
+    "title": "Microlaryngoscopy: an operation on your voicebox | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/52/rigid_pharyngoscopy_and_upper_oesophagoscopy",
+    "title": "Rigid pharyngoscopy and upper oesophagoscopy | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/52/rigid_pharyngoscopy_and_upper_oesophagoscopy_new",
+    "title": "Rigid pharyngoscopy and upper oesophagoscopy | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/53/thyroid_lumps_and_thyroid_surgery_diagnostic_hemithyroidectomy",
+    "title": "Thyroid lumps and thyroid surgery - Diagnostic hemithyroidectomy | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/54/transnasal_oesophagoscopy_tno",
+    "title": "Trans-nasal oesophagoscopy (TNO) | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/55/transoral_robotic_surgery_for_head_and_neck_cancer",
+    "title": "Trans-oral robotic surgery for head and neck cancer | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/56/submandibular_gland_excision_surgery_for_infection_andor_recurrent_blockage",
+    "title": "Submandibular gland excision - Surgery for infection and/or recurrent blockage | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/57/sinus_surgery_for_chronic_rhinosinusitis_with_nasal_polyps",
+    "title": "Sinus surgery for chronic rhinosinusitis with nasal polyps | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/57/sinus_surgery_for_chronic_rhinosinusitis_with_nasal_polyps_new",
+    "title": "Sinus surgery for chronic rhinosinusitis with nasal polyps | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/58/sinus_surgery_for_chronic_rhinosinusitis_without_nasal_polyps",
+    "title": "Sinus surgery for chronic rhinosinusitis without nasal polyps | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/58/sinus_surgery_for_chronic_rhinosinusitis_without_nasal_polyps_new",
+    "title": "Sinus surgery for chronic rhinosinusitis without nasal polyps | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/59/tonsillectomy_taking_out_your_tonsils_because_of_repeated_infections",
+    "title": "Tonsillectomy (taking out your tonsils) because of repeated infections | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/6/hearing_aids_and_how_to_get_one_under_review",
+    "title": "Hearing aids and how to get one - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/60/neck_lump_clinic",
+    "title": "Neck lump clinic | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/61/septorhinoplasty",
+    "title": "Septorhinoplasty | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/62/septal_surgery",
+    "title": "Septal surgery | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/62/septal_surgery_new",
+    "title": "Septal surgery | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/63/helping_you_decide_about_tonsil_surgery_for_your_child",
+    "title": "Helping you decide about tonsil surgery for your child | ENTUK",
+    "category": "Paeds"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/64/chronic_rhinosinusitis_in_children",
+    "title": "Chronic rhinosinusitis in children | ENTUK",
+    "category": "Paeds"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/64/chronic_rhinosinusitis_in_children_new",
+    "title": "Chronic rhinosinusitis in children | ENTUK",
+    "category": "Paeds"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/65/after_your_childs_tonsil_surgery_tips_for_parents",
+    "title": "After your child’s tonsil surgery: tips for parents | ENTUK",
+    "category": "Paeds"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/68/intracapsular_tonsillectomy_for_children",
+    "title": "Intracapsular tonsillectomy for children | ENTUK",
+    "category": "Paeds"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/7/hearing_and_deafness_under_review",
+    "title": "Hearing and deafness - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/71/rhinitis_and_hayfever",
+    "title": "Rhinitis and hayfever | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/72/thyrotoxicosis_thyroid_surgery_for_benign_thyroid_disease",
+    "title": "Thyrotoxicosis - Thyroid surgery for benign thyroid disease | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/73/tracheomalacia_in_children",
+    "title": "Tracheomalacia in children | ENTUK",
+    "category": "Paeds"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/74/how_to_use_ear_drops_or_sprays",
+    "title": "How to use ear drops or sprays | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/74/how_to_use_ear_drops_or_sprays_new",
+    "title": "How to use ear drops or sprays | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/75/how_to_do_nasal_irrigation_washes",
+    "title": "How to do nasal irrigation (washes) | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/76/how_to_use_nasal_ointment",
+    "title": "How to use nasal ointment | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/77/how_to_use_nasal_drops",
+    "title": "How to use nasal drops | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/79/how_to_use_nasal_sprays",
+    "title": "How to use nasal sprays | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/8/hearing_loss_under_review",
+    "title": "Hearing Loss - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/8/hearing_loss_under_review?:%20https://rnid.org.uk/information-and-support/take-online-hearing-check/",
+    "title": "Hearing Loss - UNDER REVIEW | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/80/parotidectomy_surgery_to_remove_a_lump",
+    "title": "Parotidectomy - Surgery to remove a lump | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/81/anosmia_smell_disorders",
+    "title": "Anosmia / Smell disorders | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/82/juvenile_nasopharyngeal_angiofibroma_jna",
+    "title": "Juvenile nasopharyngeal angiofibroma (JNA) | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/83/mltb_microlaryngotracheobronchoscopy",
+    "title": "MLTB - Micro-laryngo-tracheo-bronchoscopy | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/84/selfhelp_tips_itchy_ears_and_earwax_buildup",
+    "title": "Self-help tips: itchy ears and earwax build-up | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/86/your_voice_and_how_to_look_after_it",
+    "title": "Your voice and how to look after it | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/87/septal_perforation",
+    "title": "Septal perforation | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/88/facial_pain",
+    "title": "Facial Pain | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/89/vestibular_migraine",
+    "title": "Vestibular migraine | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/9/hole_in_the_eardrum_myringoplasty",
+    "title": "Hole in the Eardrum & Myringoplasty | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/90/bppv_and_home_epley_manoeuvre",
+    "title": "BPPV and Home Epley manoeuvre | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/91/turbinoplasty_or_surgery_to_the_inferior_turbinates",
+    "title": "Turbinoplasty or surgery to the inferior turbinates | ENTUK",
+    "category": "Rhinology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/92/balloon_sinuplasty",
+    "title": "Balloon sinuplasty | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/93/cawthornecooksey_exercises",
+    "title": "Cawthorne-Cooksey exercises | ENTUK",
+    "category": "Otology"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/94/thyroglossal_duct_cyst",
+    "title": "Thyroglossal duct cyst | ENTUK",
+    "category": "H&N"
+  },
+  {
+    "url": "https://www.entuk.org/patients/conditions/95/adenoid_surgery_part_1_what_are_adenoids_and_what_problems_can_they_cause_easy_read",
+    "title": "Adenoid Surgery Part 1 - What are adenoids and what problems can they cause? - EASY READ | ENTUK",
+    "category": "H&N"
+  }
+]
