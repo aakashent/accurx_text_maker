@@ -1,11 +1,10 @@
-/* v1.2.2 (2025-08-09) Accurx Text Maker – robust loader for templates/link(s)_titles.json + ENT categories */
+/* v1.2.3 (2025-08-09) Accurx Text Maker – robust loader + on-page diagnostics */
 
 const STATE = {
   templates: [],
   filtered: [],
   selectedIds: [],
   deletedIds: new Set(),
-  inferred: false
 };
 
 const ENT_CATEGORIES = ["Otology", "Rhinology", "H&N", "Paeds"];
@@ -22,11 +21,13 @@ const els = {
   showDeleted:document.getElementById('showDeleted'),
 };
 
+const diagBar = makeDiagBar();
+
 init();
 
 async function init() {
   try {
-    STATE.templates = await loadTemplates();
+    STATE.templates = await loadTemplatesWithDiagnostics();
   } catch (e) {
     showFatal(`Couldn’t load templates: ${e.message || e}`);
     return;
@@ -70,51 +71,57 @@ function bindEvents() {
   })();
 }
 
-async function loadTemplates() {
-  // Try in order: templates.json → link_titles.json → links_titles.json
-  const paths = ['templates.json', 'link_titles.json', 'links_titles.json'];
-
-  let raw = [];
-  for (const p of paths) {
-    try {
-      const res = await fetch(p, { cache: 'no-store' });
-      if (!res.ok) continue;
-      const data = await res.json();
-      raw = normaliseTopLevel(data);
-      if (raw.length) {
-        // If we loaded a *titles* file, we’ll infer categories and fill text safely
-        const fromTemplates = p === 'templates.json';
-        return raw.map((t, i) => ({
-          id: t.id || `item-${i}`,
-          title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
-          text: t.text || t.body || t.content || t.linkText || '',
-          // If file had a category already, normalise it; otherwise infer one
-          categories: fromTemplates
-            ? (Array.isArray(t.categories) && t.categories.length
-                ? [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')]
-                : [inferCategoryENT(t.title || '', t.text || '')])
-            : [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')]
-        }));
-      }
-    } catch { /* try next */ }
+/* ---------- LOADER WITH DIAGNOSTICS ---------- */
+async function loadTemplatesWithDiagnostics() {
+  const base = location.pathname.endsWith('/') ? location.pathname : location.pathname.replace(/[^/]+$/, '');
+  const candidateNames = ['templates.json', 'link_titles.json', 'links_titles.json'];
+  // Try each name as: relative, with repo base, and absolute to site root (covers most GH Pages setups)
+  const candidates = [];
+  for (const name of candidateNames) {
+    candidates.push(name);                           // e.g. "links_titles.json"
+    candidates.push(base + name);                    // e.g. "/accurx_text_maker/links_titles.json"
+    candidates.push('/' + location.pathname.split('/')[1] + '/' + name); // "/accurx_text_maker/links_titles.json"
   }
-  throw new Error('No templates file found (checked templates.json, link_titles.json, links_titles.json).');
+  // De-dup
+  const tried = [...new Set(candidates)];
+
+  const diag = [];
+  for (const url of tried) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      diag.push(`${url} → ${res.status}`);
+      if (!res.ok) continue;
+      const data = await res.json().catch(() => null);
+      const items = normaliseTopLevel(data);
+      if (!Array.isArray(items) || !items.length) continue;
+
+      // Map to our shape with ONE ENT category
+      const mapped = items.map((t, i) => ({
+        id: t.id || `item-${i}`,
+        title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
+        text: t.text || t.body || t.content || t.linkText || '',
+        categories: [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')]
+      }));
+
+      diagBar.textContent = 'Loaded: ' + url;
+      return mapped;
+    } catch (err) {
+      diag.push(`${url} → error`);
+    }
+  }
+  diagBar.textContent = 'Tried: ' + diag.join('  |  ');
+  throw new Error(`No templates file found (checked: ${candidateNames.join(', ')}; see diagnostics just under the title).`);
 }
 
 function normaliseTopLevel(data) {
   if (Array.isArray(data)) return data;
   if (data && Array.isArray(data.items)) return data.items;
   if (data && Array.isArray(data.data)) return data.data;
+  if (data && Array.isArray(data.results)) return data.results;
   return [];
 }
 
-function showFatal(msg) {
-  if (els.list) {
-    els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
-  }
-  toast(msg);
-}
-
+/* ---------- RENDERING ---------- */
 function applyFilters() {
   const q = (els.search?.value || '').trim().toLowerCase();
   const cat = els.category?.value || '';
@@ -191,6 +198,7 @@ function updateComposer() {
   if (els.counter) els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
 }
 
+/* ---------- ACTIONS ---------- */
 async function copyOutput() {
   try {
     await navigator.clipboard.writeText(els.output.value);
@@ -221,7 +229,7 @@ function exportTemplatesJSON() {
   toast('Downloaded templates.json');
 }
 
-/* Helpers */
+/* ---------- UTILS ---------- */
 function toast(msg) {
   if (!els.toast) return;
   els.toast.textContent = msg;
@@ -236,7 +244,7 @@ function escapeHTML(s) {
   return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
-// ENT-only inference (returns ONE of: Otology, Rhinology, H&N, Paeds)
+// ENT-only inference (ONE of: Otology, Rhinology, H&N, Paeds)
 function inferCategoryENT(title, body) {
   const t = `${title} ${body}`.toLowerCase();
   const has = (kws) => kws.some(k => t.includes(k));
@@ -248,7 +256,7 @@ function inferCategoryENT(title, body) {
   return 'H&N';
 }
 
-// Normalise any existing categories to the fixed set; accepts string or array
+// Normalise any existing categories to fixed set; string or array → string
 function normaliseCat(cats) {
   const s = Array.isArray(cats) ? (cats[0] || '') : (cats || '');
   const v = s.toLowerCase().replace(/\s*&\s*/,'&').trim();
@@ -257,4 +265,21 @@ function normaliseCat(cats) {
   if (v === 'h&n' || /head/.test(v) || /neck/.test(v)) return 'H&N';
   if (/^paed/.test(v) || /child/.test(v)) return 'Paeds';
   return '';
+}
+
+/* Small on-page diagnostics bar (shows which URLs were tried) */
+function makeDiagBar() {
+  const hdr = document.querySelector('header.container');
+  const div = document.createElement('div');
+  div.style.cssText = 'color:#888;font-size:12px;margin-top:4px';
+  hdr?.appendChild(div);
+  return div;
+}
+
+function showFatal(msg) {
+  if (els.list) {
+    els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
+  }
+  diagBar.textContent = msg;
+  toast(msg);
 }
