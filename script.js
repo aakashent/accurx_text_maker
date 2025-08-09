@@ -1,13 +1,7 @@
-/* v1.2.3 (2025-08-09) Accurx Text Maker – robust loader + on-page diagnostics */
-
-const STATE = {
-  templates: [],
-  filtered: [],
-  selectedIds: [],
-  deletedIds: new Set(),
-};
+/* v1.2.4 (2025-08-09) robust loader + visible diagnostics + ENT categories */
 
 const ENT_CATEGORIES = ["Otology", "Rhinology", "H&N", "Paeds"];
+const STATE = { templates: [], filtered: [], selectedIds: [], deletedIds: new Set() };
 
 const els = {
   search:   document.getElementById('search'),
@@ -19,9 +13,8 @@ const els = {
   toast:    document.getElementById('toast'),
   exportBtn:document.getElementById('exportBtn'),
   showDeleted:document.getElementById('showDeleted'),
+  diag:     document.getElementById('diag')
 };
-
-const diagBar = makeDiagBar();
 
 init();
 
@@ -33,25 +26,22 @@ async function init() {
     return;
   }
 
-  // Build fixed category dropdown
-  if (els.category) {
-    ENT_CATEGORIES.forEach(c => {
-      const o = document.createElement('option');
-      o.value = c; o.textContent = c;
-      els.category.appendChild(o);
-    });
-  }
+  // Fixed category dropdown
+  ENT_CATEGORIES.forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c;
+    els.category.appendChild(o);
+  });
 
   bindEvents();
   applyFilters();
 }
 
 function bindEvents() {
-  els.search?.addEventListener('input', applyFilters);
-  els.category?.addEventListener('change', applyFilters);
-  els.copyBtn?.addEventListener('click', copyOutput);
-  els.exportBtn?.addEventListener('click', exportTemplatesJSON);
-  els.showDeleted?.addEventListener('change', renderList);
+  els.search.addEventListener('input', applyFilters);
+  els.category.addEventListener('change', applyFilters);
+  els.copyBtn.addEventListener('click', copyOutput);
+  els.exportBtn.addEventListener('click', exportTemplatesJSON);
+  els.showDeleted.addEventListener('change', renderList);
 
   // Theme toggle
   (() => {
@@ -71,46 +61,53 @@ function bindEvents() {
   })();
 }
 
-/* ---------- LOADER WITH DIAGNOSTICS ---------- */
+/* ---------------- Loader with diagnostics ---------------- */
 async function loadTemplatesWithDiagnostics() {
-  const base = location.pathname.endsWith('/') ? location.pathname : location.pathname.replace(/[^/]+$/, '');
-  const candidateNames = ['templates.json', 'link_titles.json', 'links_titles.json'];
-  // Try each name as: relative, with repo base, and absolute to site root (covers most GH Pages setups)
-  const candidates = [];
-  for (const name of candidateNames) {
-    candidates.push(name);                           // e.g. "links_titles.json"
-    candidates.push(base + name);                    // e.g. "/accurx_text_maker/links_titles.json"
-    candidates.push('/' + location.pathname.split('/')[1] + '/' + name); // "/accurx_text_maker/links_titles.json"
-  }
-  // De-dup
-  const tried = [...new Set(candidates)];
+  const origin = location.origin;
+  // repoPath like "/accurx_text_maker/"
+  const parts = location.pathname.split('/').filter(Boolean);
+  const repoPath = parts.length ? `/${parts[0]}/` : '/';
+  const basePath = location.pathname.endsWith('/') ? location.pathname : location.pathname.replace(/[^/]+$/, '');
 
-  const diag = [];
-  for (const url of tried) {
+  const names = ['templates.json', 'link_titles.json', 'links_titles.json'];
+
+  // Try relative, basePath, repoPath, and absolute to be extra safe
+  const candidates = [];
+  for (const n of names) {
+    candidates.push(n);
+    candidates.push(basePath + n);
+    candidates.push(repoPath + n);
+    candidates.push(`${origin}${repoPath}${n}`);
+    candidates.push(`${origin}${basePath}${n}`);
+  }
+
+  const triedLogs = [];
+  for (const url of [...new Set(candidates)]) {
     try {
       const res = await fetch(url, { cache: 'no-store' });
-      diag.push(`${url} → ${res.status}`);
+      triedLogs.push(`${url} → ${res.status}`);
       if (!res.ok) continue;
+
       const data = await res.json().catch(() => null);
       const items = normaliseTopLevel(data);
       if (!Array.isArray(items) || !items.length) continue;
 
-      // Map to our shape with ONE ENT category
       const mapped = items.map((t, i) => ({
         id: t.id || `item-${i}`,
         title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
         text: t.text || t.body || t.content || t.linkText || '',
-        categories: [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')]
+        categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '') ]
       }));
 
-      diagBar.textContent = 'Loaded: ' + url;
+      els.diag.textContent = `Loaded: ${url}`;
       return mapped;
-    } catch (err) {
-      diag.push(`${url} → error`);
+    } catch (e) {
+      triedLogs.push(`${url} → error`);
     }
   }
-  diagBar.textContent = 'Tried: ' + diag.join('  |  ');
-  throw new Error(`No templates file found (checked: ${candidateNames.join(', ')}; see diagnostics just under the title).`);
+
+  els.diag.textContent = 'Tried: ' + triedLogs.join('  |  ');
+  throw new Error(`No templates file found (checked: ${names.join(', ')})`);
 }
 
 function normaliseTopLevel(data) {
@@ -121,21 +118,20 @@ function normaliseTopLevel(data) {
   return [];
 }
 
-/* ---------- RENDERING ---------- */
+/* ---------------- Filtering & render ---------------- */
 function applyFilters() {
-  const q = (els.search?.value || '').trim().toLowerCase();
-  const cat = els.category?.value || '';
+  const q = (els.search.value || '').trim().toLowerCase();
+  const cat = els.category.value || '';
   STATE.filtered = (STATE.templates || []).filter(t => {
     const matchesText = !q || (t.title?.toLowerCase().includes(q) || t.text?.toLowerCase().includes(q));
     const matchesCat  = !cat || (normaliseCat(t.categories) === cat);
-    const notDeleted  = els.showDeleted?.checked ? true : !STATE.deletedIds.has(t.id);
+    const notDeleted  = els.showDeleted.checked ? true : !STATE.deletedIds.has(t.id);
     return matchesText && matchesCat && notDeleted;
   });
   renderList();
 }
 
 function renderList() {
-  if (!els.list) return;
   els.list.innerHTML = '';
   STATE.filtered.forEach(t => {
     const li = document.createElement('li');
@@ -159,9 +155,8 @@ function renderList() {
           ${STATE.deletedIds.has(t.id) ? '<span aria-label="deleted">(deleted)</span>' : ''}
         </div>
       </div>`;
-
-    li.querySelector('input')?.addEventListener('change', onSelectChange);
-    li.querySelector('[data-act="delete"]')?.addEventListener('click', () => onDelete(t.id));
+    li.querySelector('input').addEventListener('change', onSelectChange);
+    li.querySelector('[data-act="delete"]').addEventListener('click', () => onDelete(t.id));
     els.list.appendChild(li);
   });
   updateComposer();
@@ -174,7 +169,7 @@ function onSelectChange(e) {
   } else {
     STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
   }
-  renderList(); // refresh disabled states
+  renderList();
 }
 
 function onDelete(id) {
@@ -189,16 +184,14 @@ function onDelete(id) {
 }
 
 function updateComposer() {
-  const chosen = STATE.selectedIds
-    .map(id => (STATE.templates || []).find(t => t.id === id))
-    .filter(Boolean);
+  const chosen = STATE.selectedIds.map(id => (STATE.templates || []).find(t => t.id === id)).filter(Boolean);
   const combined = chosen.map(t => (t.text || '').trim()).join('\n\n');
-  if (els.output) els.output.value = combined;
-  if (els.copyBtn) els.copyBtn.disabled = combined.length === 0;
-  if (els.counter) els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
+  els.output.value = combined;
+  els.copyBtn.disabled = combined.length === 0;
+  els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
 }
 
-/* ---------- ACTIONS ---------- */
+/* ---------------- Actions ---------------- */
 async function copyOutput() {
   try {
     await navigator.clipboard.writeText(els.output.value);
@@ -216,7 +209,7 @@ function exportTemplatesJSON() {
     .map(t => ({
       id: t.id,
       title: t.title,
-      categories: [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')],
+      categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '') ],
       text: t.text || ''
     }));
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -229,9 +222,8 @@ function exportTemplatesJSON() {
   toast('Downloaded templates.json');
 }
 
-/* ---------- UTILS ---------- */
+/* ---------------- Utils ---------------- */
 function toast(msg) {
-  if (!els.toast) return;
   els.toast.textContent = msg;
   els.toast.className = 'show';
   setTimeout(() => { els.toast.className = ''; }, 1600);
@@ -243,7 +235,6 @@ function snippet(text, max = 160) {
 function escapeHTML(s) {
   return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
-
 // ENT-only inference (ONE of: Otology, Rhinology, H&N, Paeds)
 function inferCategoryENT(title, body) {
   const t = `${title} ${body}`.toLowerCase();
@@ -255,8 +246,7 @@ function inferCategoryENT(title, body) {
   if (has(['ent','nose and throat','otolaryngology'])) return 'H&N';
   return 'H&N';
 }
-
-// Normalise any existing categories to fixed set; string or array → string
+// Normalise string/array → one of the fixed set
 function normaliseCat(cats) {
   const s = Array.isArray(cats) ? (cats[0] || '') : (cats || '');
   const v = s.toLowerCase().replace(/\s*&\s*/,'&').trim();
@@ -266,20 +256,7 @@ function normaliseCat(cats) {
   if (/^paed/.test(v) || /child/.test(v)) return 'Paeds';
   return '';
 }
-
-/* Small on-page diagnostics bar (shows which URLs were tried) */
-function makeDiagBar() {
-  const hdr = document.querySelector('header.container');
-  const div = document.createElement('div');
-  div.style.cssText = 'color:#888;font-size:12px;margin-top:4px';
-  hdr?.appendChild(div);
-  return div;
-}
-
 function showFatal(msg) {
-  if (els.list) {
-    els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
-  }
-  diagBar.textContent = msg;
-  toast(msg);
+  els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
+  els.diag.textContent = msg;
 }
