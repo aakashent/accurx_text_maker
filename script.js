@@ -1,52 +1,237 @@
-let linksData = {}; // This will be populated by the JSON data
+/* v1.2.1 (2025-08-09) Accurx Text Maker – ENT categories locked + multi-select + delete + export */
 
-// Fetch the JSON data
-fetch('links_titles.json')
-    .then(response => response.json())
-    .then(data => {
-        linksData = data;
-        populateDropdown();
-    })
-    .catch(error => console.error('Failed to load JSON data:', error));
+const STATE = {
+  templates: [],
+  filtered: [],
+  selectedIds: [],
+  deletedIds: new Set(),
+  inferred: false
+};
 
-// Populate the dropdown with titles
-function populateDropdown() {
-    const dropdown = document.getElementById('sitemapDropdown');
-    Object.entries(linksData).forEach(([url, title]) => {
-        const option = document.createElement('option');
-        option.value = url;
-        option.textContent = title;  // Use the title for dropdown display
-        dropdown.appendChild(option);
+const ENT_CATEGORIES = ["Otology", "Rhinology", "H&N", "Paeds"];
+
+const els = {
+  search:   document.getElementById('search'),
+  category: document.getElementById('category'),
+  list:     document.getElementById('list'),
+  output:   document.getElementById('output'),
+  copyBtn:  document.getElementById('copyBtn'),
+  counter:  document.getElementById('counter'),
+  toast:    document.getElementById('toast'),
+  exportBtn:document.getElementById('exportBtn'),
+  showDeleted:document.getElementById('showDeleted'),
+};
+
+init();
+
+async function init() {
+  // Try templates.json first; if missing, fall back to links_titles.json and infer categories
+  let data = [];
+  try {
+    const res = await fetch('templates.json', { cache: 'no-store' });
+    if (res.ok) data = await res.json();
+  } catch {}
+  if (!data.length) {
+    try {
+      const legacy = await (await fetch('links_titles.json', { cache: 'no-store' })).json();
+      data = legacy.map((t, i) => ({
+        id: t.id || `item-${i}`,
+        title: t.title || t.name || `Item ${i+1}`,
+        text: t.text || t.body || t.linkText || '',
+        categories: [inferCategoryENT(t.title || '', t.text || '')] // one fixed category
+      }));
+      STATE.inferred = true;
+    } catch {}
+  }
+  STATE.templates = data;
+
+  // Build category dropdown (fixed 4)
+  if (els.category) {
+    ENT_CATEGORIES.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      els.category.appendChild(o);
     });
+  }
+
+  bindEvents();
+  applyFilters();
 }
 
-// Display the selected link in the textarea and update the anchor tag
-function displayLink() {
-    const dropdown = document.getElementById('sitemapDropdown');
-    const url = dropdown.value;
-    const title = linksData[url];  // Retrieve the title using the URL
-    const linkDisplayBox = document.getElementById('linkDisplayBox');
-    const dynamicLink = document.getElementById('dynamicLink');
-    
-    linkDisplayBox.value = `Please see the below link for a leaflet - ${title}\n\n${url}`;
-    dynamicLink.href = url; // Set the href attribute of the anchor tag
-    dynamicLink.textContent = url; // Display the URL as the link text
-    adjustTextareaHeight(linkDisplayBox);
+function bindEvents() {
+  els.search?.addEventListener('input', applyFilters);
+  els.category?.addEventListener('change', applyFilters);
+  els.copyBtn?.addEventListener('click', copyOutput);
+  els.exportBtn?.addEventListener('click', exportTemplatesJSON);
+  els.showDeleted?.addEventListener('change', renderList);
+
+  // Theme toggle
+  (() => {
+    const btn = document.getElementById('themeToggle'); if (!btn) return;
+    const KEY = 'xtheme';
+    const apply = (val) => {
+      document.documentElement.dataset.theme = val;
+      if (val === 'dark') document.documentElement.classList.add('dark');
+      else document.documentElement.classList.remove('dark');
+    };
+    const saved = localStorage.getItem(KEY); if (saved) apply(saved);
+    btn.addEventListener('click', () => {
+      const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      const next = cur === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(KEY, next); apply(next);
+    });
+  })();
 }
 
-// Dynamically adjust the height of the textarea to fit the content, up to a maximum
-function adjustTextareaHeight(textarea) {
-    textarea.style.height = 'auto'; // Reset height to recalculate
-    textarea.style.height = `${textarea.scrollHeight}px`; // Set height based on scroll height
-    if (textarea.scrollHeight > 150) {
-        textarea.style.height = '150px'; // Limit height to max-height
-    }
+function applyFilters() {
+  const q = (els.search?.value || '').trim().toLowerCase();
+  const cat = els.category?.value || '';
+  STATE.filtered = (STATE.templates || []).filter(t => {
+    const matchesText = !q || (t.title?.toLowerCase().includes(q) || t.text?.toLowerCase().includes(q));
+    const matchesCat  = !cat || (normaliseCat(t.categories) === cat);
+    const notDeleted  = els.showDeleted?.checked ? true : !STATE.deletedIds.has(t.id);
+    return matchesText && matchesCat && notDeleted;
+  });
+  renderList();
 }
 
-// Copy the content of the textarea to the clipboard
-document.getElementById('copyButton').addEventListener('click', () => {
-    const textToCopy = document.getElementById('linkDisplayBox').value;
-    navigator.clipboard.writeText(textToCopy)
-        .then(() => alert('Text copied to clipboard!'))
-        .catch(err => console.error('Failed to copy text:', err));
-});
+function renderList() {
+  if (!els.list) return;
+  els.list.innerHTML = '';
+  STATE.filtered.forEach(t => {
+    const li = document.createElement('li');
+    li.className = 'card';
+
+    const isChecked = STATE.selectedIds.includes(t.id);
+    const disabled = !isChecked && STATE.selectedIds.length >= 3;
+
+    li.innerHTML = `
+      <div class="card-inner">
+        <input type="checkbox" value="${t.id}" ${isChecked ? 'checked' : ''} ${disabled ? 'disabled' : ''} />
+        <div class="meta">
+          <h3>${t.title || ''}</h3>
+          <div class="tags"><span class="tag">${normaliseCat(t.categories) || 'H&N'}</span></div>
+          <pre class="snippet">${escapeHTML(snippet(t.text || ''))}</pre>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn" data-act="delete" title="${STATE.deletedIds.has(t.id) ? 'Undo delete' : 'Delete'}">
+            ${STATE.deletedIds.has(t.id) ? 'Undo' : 'Delete'}
+          </button>
+          ${STATE.deletedIds.has(t.id) ? '<span aria-label="deleted">(deleted)</span>' : ''}
+        </div>
+      </div>`;
+
+    li.querySelector('input')?.addEventListener('change', onSelectChange);
+    li.querySelector('[data-act="delete"]')?.addEventListener('click', () => onDelete(t.id));
+    els.list.appendChild(li);
+  });
+  updateComposer();
+}
+
+function onSelectChange(e) {
+  const id = e.target.value;
+  if (e.target.checked) {
+    if (!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id);
+  } else {
+    STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
+  }
+  renderList(); // refresh disabled states
+}
+
+function onDelete(id) {
+  if (STATE.deletedIds.has(id)) {
+    STATE.deletedIds.delete(id);
+    toast('Restored');
+  } else {
+    STATE.deletedIds.add(id);
+    toast('Deleted');
+  }
+  applyFilters();
+}
+
+function updateComposer() {
+  const chosen = STATE.selectedIds
+    .map(id => (STATE.templates || []).find(t => t.id === id))
+    .filter(Boolean);
+  const combined = chosen.map(t => (t.text || '').trim()).join('\n\n');
+  if (els.output) els.output.value = combined;
+  if (els.copyBtn) els.copyBtn.disabled = combined.length === 0;
+  if (els.counter) els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
+}
+
+async function copyOutput() {
+  try {
+    await navigator.clipboard.writeText(els.output.value);
+    toast('Copied to clipboard');
+  } catch {
+    // Fallback for older iOS
+    els.output.select();
+    document.execCommand('copy');
+    toast('Copied');
+  }
+}
+
+function exportTemplatesJSON() {
+  // Export = all non-deleted templates with a SINGLE category from the fixed set
+  const exportData = (STATE.templates || [])
+    .filter(t => !STATE.deletedIds.has(t.id))
+    .map(t => ({
+      id: t.id,
+      title: t.title,
+      categories: [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')],
+      text: t.text || ''
+    }));
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'templates.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('Downloaded templates.json');
+}
+
+/* Helpers */
+
+function toast(msg) {
+  if (!els.toast) return;
+  els.toast.textContent = msg;
+  els.toast.className = 'show';
+  setTimeout(() => { els.toast.className = ''; }, 1600);
+}
+
+function snippet(text, max = 160) {
+  const s = (text || '').replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+}
+function escapeHTML(s) {
+  return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// ENT-only inference (returns ONE of: Otology, Rhinology, H&N, Paeds)
+function inferCategoryENT(title, body) {
+  const t = `${title} ${body}`.toLowerCase();
+  const has = (kws) => kws.some(k => t.includes(k));
+  // Paeds first (e.g. "Paediatric epistaxis" → Paeds)
+  if (has(['paediatric','paediatrics','paeds','child','children','toddler','infant','neonate','school-age','young person'])) return 'Paeds';
+  // Otology
+  if (has(['ear','pinna','hearing','tinnitus','vertigo','otic','otosclerosis','otitis','eardrum','tympanic','mastoid','cholesteatoma','earwax','grommet','meniere','bppv','labyrinthitis'])) return 'Otology';
+  // Rhinology
+  if (has(['nose','nasal','sinus','sinuses','rhino','rhinitis','sinusitis','septum','septal','polyps','epistaxis','smell','olfactory','turbinates'])) return 'Rhinology';
+  // Head & Neck
+  if (has(['throat','tonsil','tonsill','neck','larynx','laryngeal','voice','hoarseness','thyroid','parotid','salivary','gland','swallow','dysphagia','snoring','sleep apnoea','obstructive sleep apnoea','osa'])) return 'H&N';
+  // Fallback
+  if (has(['ent','nose and throat','otolaryngology'])) return 'H&N';
+  return 'H&N';
+}
+
+// Normalise any existing categories to the fixed set; accepts string or array
+function normaliseCat(cats) {
+  const s = Array.isArray(cats) ? (cats[0] || '') : (cats || '');
+  const v = s.toLowerCase().replace(/\s*&\s*/,'&').trim();
+  if (/^oto/.test(v) || v === 'ear') return 'Otology';
+  if (/^rhin/.test(v) || v === 'nose' || v === 'sinus' || v === 'sinuses') return 'Rhinology';
+  if (v === 'h&n' || /head/.test(v) || /neck/.test(v)) return 'H&N';
+  if (/^paed/.test(v) || /child/.test(v)) return 'Paeds';
+  return '';
+}
