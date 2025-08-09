@@ -1,208 +1,150 @@
-/* v1.2.6 – bullet-proof loader with on-page diagnostics */
-
-const ENT_CATEGORIES = ["Otology", "Rhinology", "H&N", "Paeds"];
-const STATE = { templates: [], filtered: [], selectedIds: [], deletedIds: new Set() };
-
+// v1.2.7 – absolute path + cache-buster + visible diagnostics
+const ENT_CATEGORIES = ["Otology","Rhinology","H&N","Paeds"];
 const els = {
-  search:   document.getElementById('search'),
+  list: document.getElementById('list'),
   category: document.getElementById('category'),
-  list:     document.getElementById('list'),
-  output:   document.getElementById('output'),
-  copyBtn:  document.getElementById('copyBtn'),
-  counter:  document.getElementById('counter'),
-  toast:    document.getElementById('toast'),
-  exportBtn:document.getElementById('exportBtn'),
-  showDeleted:document.getElementById('showDeleted'),
-  // add a tiny diagnostics line under the header if missing
-  diag:     document.getElementById('diag') || (() => {
-              const d = document.createElement('div');
-              d.id = 'diag'; d.style.cssText = 'color:#888;font-size:12px;margin-top:4px';
-              document.querySelector('header')?.appendChild(d);
-              return d;
-            })()
+  search: document.getElementById('search'),
+  copyBtn: document.getElementById('copyBtn'),
+  output: document.getElementById('output'),
+  counter: document.getElementById('counter'),
+  showDeleted: document.getElementById('showDeleted'),
+  exportBtn: document.getElementById('exportBtn'),
+  diag: document.getElementById('diag'),
+  toast: document.getElementById('toast')
 };
+const STATE = { templates: [], filtered: [], selectedIds: [], deletedIds: new Set() };
 
 init();
 
-async function init() {
-  try {
-    // 1) relative (works if you’re at /accurx_text_maker/)
-    // 2) GitHub Pages absolute (always correct for your repo)
-    // 3) raw.githubusercontent.com (robust fallback with CORS)
-    const urls = [
-      'links_titles.json',
-      'https://aakashent.github.io/accurx_text_maker/links_titles.json',
-      'https://raw.githubusercontent.com/aakashent/accurx_text_maker/main/links_titles.json'
-    ];
+async function init(){
+  const url = `/accurx_text_maker/links_titles.json?v=${Date.now()}`; // absolute + cache-buster
+  try{
+    const res = await fetch(url, { cache: 'no-store' });
+    els.diag.textContent = `Tried: ${location.origin}${url} → ${res.status}`;
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const tried = [];
-    let items = [];
+    const data = await res.json();
+    const items = normaliseTopLevel(data);
+    if(!items.length) throw new Error('JSON structure empty');
 
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, { cache: 'no-store' });
-        tried.push(`${url} → ${res.status}`);
-        if (!res.ok) continue;
-        const data = await res.json();
-        items = normaliseTopLevel(data);
-        if (items.length) {
-          els.diag.textContent = `Loaded: ${url}`;
-          break;
-        }
-      } catch (e) {
-        tried.push(`${url} → error`);
-      }
-    }
-
-    if (!items.length) {
-      els.diag.textContent = 'Tried: ' + tried.join('  |  ');
-      showFatal('Couldn’t load templates JSON. Tap one of the URLs above to check it opens.');
-      return;
-    }
-
-    STATE.templates = items.map((t, i) => ({
+    STATE.templates = items.map((t,i)=>({
       id: t.id || `item-${i}`,
       title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
       text: t.text || t.body || t.content || t.linkText || '',
-      categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '') ]
+      categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title||'', t.text||'') ]
     }));
-
-  } catch (e) {
-    showFatal('Failed to load JSON data.');
+    els.diag.textContent = `Loaded: ${location.origin}${url}  •  ${STATE.templates.length} items`;
+  }catch(e){
+    showFatal(`Couldn’t load templates: ${e.message}`);
     return;
   }
 
-  ENT_CATEGORIES.forEach(c => {
-    const o = document.createElement('option'); o.value = c; o.textContent = c;
-    els.category.appendChild(o);
-  });
-
+  ENT_CATEGORIES.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; els.category.appendChild(o); });
   bindEvents();
   applyFilters();
 }
 
-function normaliseTopLevel(data) {
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.items)) return data.items;
-  if (data && Array.isArray(data.data)) return data.data;
-  if (data && Array.isArray(data.results)) return data.results;
-  return [];
-}
-
-function bindEvents() {
+function bindEvents(){
   els.search.addEventListener('input', applyFilters);
   els.category.addEventListener('change', applyFilters);
+  els.showDeleted.addEventListener('change', renderList);
   els.copyBtn.addEventListener('click', copyOutput);
   els.exportBtn.addEventListener('click', exportTemplatesJSON);
-  els.showDeleted.addEventListener('change', renderList);
 }
 
-function applyFilters() {
-  const q = (els.search.value || '').trim().toLowerCase();
-  const cat = els.category.value || '';
-  STATE.filtered = (STATE.templates || []).filter(t => {
-    const matchesText = !q || (t.title?.toLowerCase().includes(q) || t.text?.toLowerCase().includes(q));
-    const matchesCat  = !cat || (normaliseCat(t.categories) === cat);
-    const notDeleted  = els.showDeleted.checked ? true : !STATE.deletedIds.has(t.id);
-    return matchesText && matchesCat && notDeleted;
+function applyFilters(){
+  const q=(els.search.value||'').toLowerCase().trim();
+  const cat=els.category.value||'';
+  STATE.filtered = STATE.templates.filter(t=>{
+    const mt=!q || t.title.toLowerCase().includes(q) || t.text.toLowerCase().includes(q);
+    const mc=!cat || normaliseCat(t.categories)===cat;
+    const nd=els.showDeleted.checked || !STATE.deletedIds.has(t.id);
+    return mt && mc && nd;
   });
   renderList();
 }
 
-function renderList() {
-  els.list.innerHTML = '';
-  STATE.filtered.forEach(t => {
-    const li = document.createElement('li');
-    li.className = 'card';
-    const isChecked = STATE.selectedIds.includes(t.id);
-    const disabled = !isChecked && STATE.selectedIds.length >= 3;
-    li.innerHTML = `
+function renderList(){
+  els.list.innerHTML='';
+  STATE.filtered.forEach(t=>{
+    const li=document.createElement('li'); li.className='card';
+    const checked=STATE.selectedIds.includes(t.id);
+    const disabled=!checked && STATE.selectedIds.length>=3;
+    li.innerHTML=`
       <div class="card-inner">
-        <input type="checkbox" value="${t.id}" ${isChecked ? 'checked' : ''} ${disabled ? 'disabled' : ''} />
+        <input type="checkbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
         <div class="meta">
-          <h3>${t.title || ''}</h3>
-          <div class="tags"><span class="tag">${normaliseCat(t.categories) || 'H&N'}</span></div>
-          <pre class="snippet">${escapeHTML(snippet(t.text || ''))}</pre>
+          <h3>${t.title||''}</h3>
+          <div class="tags"><span class="tag">${normaliseCat(t.categories)||'H&N'}</span></div>
+          <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
         </div>
         <div class="card-actions">
-          <button class="icon-btn" data-act="delete" title="${STATE.deletedIds.has(t.id) ? 'Undo delete' : 'Delete'}">
-            ${STATE.deletedIds.has(t.id) ? 'Undo' : 'Delete'}
-          </button>
-          ${STATE.deletedIds.has(t.id) ? '<span aria-label="deleted">(deleted)</span>' : ''}
+          <button class="icon-btn" data-act="delete">${STATE.deletedIds.has(t.id)?'Undo':'Delete'}</button>
+          ${STATE.deletedIds.has(t.id)?'<span aria-label="deleted">(deleted)</span>':''}
         </div>
       </div>`;
-    li.querySelector('input').addEventListener('change', onSelectChange);
-    li.querySelector('[data-act="delete"]').addEventListener('click', () => onDelete(t.id));
+    li.querySelector('input').addEventListener('change', e=>{
+      const id=e.target.value;
+      if(e.target.checked){ if(!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id); }
+      else { STATE.selectedIds=STATE.selectedIds.filter(x=>x!==id); }
+      renderList();
+    });
+    li.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
+      if(STATE.deletedIds.has(t.id)){ STATE.deletedIds.delete(t.id); toast('Restored'); }
+      else { STATE.deletedIds.add(t.id); toast('Deleted'); }
+      applyFilters();
+    });
     els.list.appendChild(li);
   });
   updateComposer();
 }
 
-/* actions */
-function onSelectChange(e) {
-  const id = e.target.value;
-  if (e.target.checked) {
-    if (!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id);
-  } else {
-    STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
-  }
-  renderList();
-}
-function onDelete(id) {
-  if (STATE.deletedIds.has(id)) { STATE.deletedIds.delete(id); toast('Restored'); }
-  else { STATE.deletedIds.add(id); toast('Deleted'); }
-  applyFilters();
-}
-function updateComposer() {
-  const chosen = STATE.selectedIds.map(id => (STATE.templates || []).find(t => t.id === id)).filter(Boolean);
-  const combined = chosen.map(t => (t.text || '').trim()).join('\n\n');
-  els.output.value = combined;
-  els.copyBtn.disabled = combined.length === 0;
-  els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
-}
-async function copyOutput() {
-  try { await navigator.clipboard.writeText(els.output.value); toast('Copied to clipboard'); }
-  catch { els.output.select(); document.execCommand('copy'); toast('Copied'); }
-}
-function exportTemplatesJSON() {
-  const exportData = (STATE.templates || [])
-    .filter(t => !STATE.deletedIds.has(t.id))
-    .map(t => ({
-      id: t.id, title: t.title,
-      categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '') ],
-      text: t.text || ''
-    }));
-  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = 'templates.json';
-  document.body.appendChild(a); a.click(); a.remove();
-  toast('Downloaded templates.json');
+function updateComposer(){
+  const chosen=STATE.selectedIds.map(id=>STATE.templates.find(t=>t.id===id)).filter(Boolean);
+  const combined=chosen.map(t=>(t.text||'').trim()).join('\n\n');
+  els.output.value=combined;
+  els.copyBtn.disabled=!combined;
+  els.counter.textContent=`${STATE.selectedIds.length}/3 selected`;
 }
 
-/* utils */
-function toast(msg){ els.toast.textContent = msg; els.toast.className='show'; setTimeout(()=>els.toast.className='',1600); }
-function snippet(text,max=160){ const s=(text||'').replace(/\s+/g,' ').trim(); return s.length>max? s.slice(0,max-1)+'…':s; }
-function escapeHTML(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+/* Export */
+function exportTemplatesJSON(){
+  const exportData=STATE.templates.filter(t=>!STATE.deletedIds.has(t.id)).map(t=>({
+    id:t.id, title:t.title,
+    categories:[ normaliseCat(t.categories) || inferCategoryENT(t.title||'', t.text||'') ],
+    text:t.text||''
+  }));
+  const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='templates.json';
+  document.body.appendChild(a); a.click(); a.remove(); toast('Downloaded templates.json');
+}
+
+/* Helpers */
+function normaliseTopLevel(d){
+  if(Array.isArray(d)) return d;
+  if(d && Array.isArray(d.items)) return d.items;
+  if(d && Array.isArray(d.data)) return d.data;
+  if(d && typeof d==='object'){ // flatten grouped {Section:[...]}
+    const all=[]; for(const k of Object.keys(d)){ if(Array.isArray(d[k])) all.push(...d[k]); } return all;
+  }
+  return [];
+}
 function inferCategoryENT(title, body){
-  const t = `${title} ${body}`.toLowerCase();
-  const has = kws => kws.some(k => t.includes(k));
-  if (has(['paediatric','paediatrics','paeds','child','children','toddler','infant','neonate','school-age','young person'])) return 'Paeds';
-  if (has(['ear','pinna','hearing','tinnitus','vertigo','otic','otosclerosis','otitis','eardrum','tympanic','mastoid','cholesteatoma','earwax','grommet','meniere','bppv','labyrinthitis'])) return 'Otology';
-  if (has(['nose','nasal','sinus','sinuses','rhino','rhinitis','sinusitis','septum','septal','polyps','epistaxis','smell','olfactory','turbinates'])) return 'Rhinology';
-  if (has(['throat','tonsil','tonsill','neck','larynx','laryngeal','voice','hoarseness','thyroid','parotid','salivary','gland','swallow','dysphagia','snoring','sleep apnoea','obstructive sleep apnoea','osa'])) return 'H&N';
-  if (has(['ent','nose and throat','otolaryngology'])) return 'H&N';
+  const t=`${title} ${body}`.toLowerCase(), has=kws=>kws.some(k=>t.includes(k));
+  if(has(['paediatric','paeds','child','children','infant','toddler','neonate'])) return 'Paeds';
+  if(has(['ear','hearing','tinnitus','vertigo','otitis','eardrum','tympanic','mastoid','cholesteatoma','earwax','grommet','meniere','bppv'])) return 'Otology';
+  if(has(['nose','nasal','sinus','rhino','rhinitis','sinusitis','septum','polyps','epistaxis','smell','turbinates'])) return 'Rhinology';
+  if(has(['throat','tonsil','neck','larynx','voice','thyroid','parotid','salivary','swallow','dysphagia','snoring','sleep apnoea','osa'])) return 'H&N';
   return 'H&N';
 }
-function normaliseCat(cats){
-  const s = Array.isArray(cats) ? (cats[0] || '') : (cats || '');
-  const v = s.toLowerCase().replace(/\s*&\s*/,'&').trim();
-  if (/^oto/.test(v) || v==='ear') return 'Otology';
-  if (/^rhin/.test(v) || v==='nose' || v==='sinus' || v==='sinuses') return 'Rhinology';
-  if (v==='h&n' || /head/.test(v) || /neck/.test(v)) return 'H&N';
-  if (/^paed/.test(v) || /child/.test(v)) return 'Paeds';
+function normaliseCat(c){ const s=Array.isArray(c)?(c[0]||''): (c||''); const v=s.toLowerCase().replace(/\s*&\s*/,'&').trim();
+  if(/^oto/.test(v)||v==='ear') return 'Otology';
+  if(/^rhin/.test(v)||['nose','sinus','sinuses'].includes(v)) return 'Rhinology';
+  if(v==='h&n'||/head|neck/.test(v)) return 'H&N';
+  if(/^paed/.test(v)||/child/.test(v)) return 'Paeds';
   return '';
 }
-function showFatal(msg){
-  els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
-  els.diag.textContent = msg;
-}
+function snippet(text,max=160){ const s=(text||'').replace(/\s+/g,' ').trim(); return s.length>max? s.slice(0,max-1)+'…':s; }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function toast(msg){ els.toast.textContent=msg; els.toast.className='show'; setTimeout(()=>els.toast.className='',1600); }
+function showFatal(msg){ els.list.innerHTML=`<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${msg}</li>`; }
