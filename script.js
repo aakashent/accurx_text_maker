@@ -133,11 +133,20 @@ function renderList(){
 }
 
 function updateComposer(){
-  const chosen=STATE.selectedIds.map(id=>STATE.templates.find(t=>t.id===id)).filter(Boolean);
-  const combined=chosen.map(t=>(t.text||'').trim()).join('\n\n');
-  els.output.value=combined;
-  els.copyBtn.disabled=!combined;
-  els.counter.textContent=`${STATE.selectedIds.length}/3 selected`;
+  const chosen = STATE.selectedIds
+    .map(id => STATE.templates.find(t => t.id === id))
+    .filter(Boolean);
+
+  if (chosen.length) {
+    const plural = chosen.length > 1 ? 'leaflets' : 'leaflet';
+    const lines = chosen.map(t => `${t.title}:\n${t.url}`);
+    els.output.value = `Please see the below ${plural}:\n` + lines.join('\n\n');
+  } else {
+    els.output.value = '';
+  }
+
+  els.copyBtn.disabled = !chosen.length;
+  els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
 }
 
 /* ---------- Actions ---------- */
