@@ -20,7 +20,7 @@ init();
 async function init() {
   try {
     // EXACTLY like your working code
-    const res = await fetch('links_titles.json', { cache: 'no-store' });
+    const res = await fetch('https://aakashent.github.io/accurx_text_maker/links_titles.json', { cache: 'no-store' });
     const data = await res.json();
 
     // Map whatever shape you have into the UI shape
