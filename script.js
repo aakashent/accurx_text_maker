@@ -1,4 +1,4 @@
-/* v1.2.1 (2025-08-09) Accurx Text Maker – ENT categories locked + multi-select + delete + export */
+/* v1.2.2 (2025-08-09) Accurx Text Maker – robust loader for templates/link(s)_titles.json + ENT categories */
 
 const STATE = {
   templates: [],
@@ -25,27 +25,14 @@ const els = {
 init();
 
 async function init() {
-  // Try templates.json first; if missing, fall back to links_titles.json and infer categories
-  let data = [];
   try {
-    const res = await fetch('templates.json', { cache: 'no-store' });
-    if (res.ok) data = await res.json();
-  } catch {}
-  if (!data.length) {
-    try {
-      const legacy = await (await fetch('links_titles.json', { cache: 'no-store' })).json();
-      data = legacy.map((t, i) => ({
-        id: t.id || `item-${i}`,
-        title: t.title || t.name || `Item ${i+1}`,
-        text: t.text || t.body || t.linkText || '',
-        categories: [inferCategoryENT(t.title || '', t.text || '')] // one fixed category
-      }));
-      STATE.inferred = true;
-    } catch {}
+    STATE.templates = await loadTemplates();
+  } catch (e) {
+    showFatal(`Couldn’t load templates: ${e.message || e}`);
+    return;
   }
-  STATE.templates = data;
 
-  // Build category dropdown (fixed 4)
+  // Build fixed category dropdown
   if (els.category) {
     ENT_CATEGORIES.forEach(c => {
       const o = document.createElement('option');
@@ -81,6 +68,51 @@ function bindEvents() {
       localStorage.setItem(KEY, next); apply(next);
     });
   })();
+}
+
+async function loadTemplates() {
+  // Try in order: templates.json → link_titles.json → links_titles.json
+  const paths = ['templates.json', 'link_titles.json', 'links_titles.json'];
+
+  let raw = [];
+  for (const p of paths) {
+    try {
+      const res = await fetch(p, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      raw = normaliseTopLevel(data);
+      if (raw.length) {
+        // If we loaded a *titles* file, we’ll infer categories and fill text safely
+        const fromTemplates = p === 'templates.json';
+        return raw.map((t, i) => ({
+          id: t.id || `item-${i}`,
+          title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
+          text: t.text || t.body || t.content || t.linkText || '',
+          // If file had a category already, normalise it; otherwise infer one
+          categories: fromTemplates
+            ? (Array.isArray(t.categories) && t.categories.length
+                ? [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')]
+                : [inferCategoryENT(t.title || '', t.text || '')])
+            : [normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '')]
+        }));
+      }
+    } catch { /* try next */ }
+  }
+  throw new Error('No templates file found (checked templates.json, link_titles.json, links_titles.json).');
+}
+
+function normaliseTopLevel(data) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.items)) return data.items;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+
+function showFatal(msg) {
+  if (els.list) {
+    els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
+  }
+  toast(msg);
 }
 
 function applyFilters() {
@@ -164,7 +196,6 @@ async function copyOutput() {
     await navigator.clipboard.writeText(els.output.value);
     toast('Copied to clipboard');
   } catch {
-    // Fallback for older iOS
     els.output.select();
     document.execCommand('copy');
     toast('Copied');
@@ -172,7 +203,6 @@ async function copyOutput() {
 }
 
 function exportTemplatesJSON() {
-  // Export = all non-deleted templates with a SINGLE category from the fixed set
   const exportData = (STATE.templates || [])
     .filter(t => !STATE.deletedIds.has(t.id))
     .map(t => ({
@@ -192,14 +222,12 @@ function exportTemplatesJSON() {
 }
 
 /* Helpers */
-
 function toast(msg) {
   if (!els.toast) return;
   els.toast.textContent = msg;
   els.toast.className = 'show';
   setTimeout(() => { els.toast.className = ''; }, 1600);
 }
-
 function snippet(text, max = 160) {
   const s = (text || '').replace(/\s+/g, ' ').trim();
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
@@ -212,15 +240,10 @@ function escapeHTML(s) {
 function inferCategoryENT(title, body) {
   const t = `${title} ${body}`.toLowerCase();
   const has = (kws) => kws.some(k => t.includes(k));
-  // Paeds first (e.g. "Paediatric epistaxis" → Paeds)
   if (has(['paediatric','paediatrics','paeds','child','children','toddler','infant','neonate','school-age','young person'])) return 'Paeds';
-  // Otology
   if (has(['ear','pinna','hearing','tinnitus','vertigo','otic','otosclerosis','otitis','eardrum','tympanic','mastoid','cholesteatoma','earwax','grommet','meniere','bppv','labyrinthitis'])) return 'Otology';
-  // Rhinology
   if (has(['nose','nasal','sinus','sinuses','rhino','rhinitis','sinusitis','septum','septal','polyps','epistaxis','smell','olfactory','turbinates'])) return 'Rhinology';
-  // Head & Neck
   if (has(['throat','tonsil','tonsill','neck','larynx','laryngeal','voice','hoarseness','thyroid','parotid','salivary','gland','swallow','dysphagia','snoring','sleep apnoea','obstructive sleep apnoea','osa'])) return 'H&N';
-  // Fallback
   if (has(['ent','nose and throat','otolaryngology'])) return 'H&N';
   return 'H&N';
 }
