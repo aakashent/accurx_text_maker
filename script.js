@@ -1,4 +1,4 @@
-/* v1.2.4 (2025-08-09) robust loader + visible diagnostics + ENT categories */
+/* v1.2.5 (2025-08-09) Simple loader pinned to links_titles.json + ENT features */
 
 const ENT_CATEGORIES = ["Otology", "Rhinology", "H&N", "Paeds"];
 const STATE = { templates: [], filtered: [], selectedIds: [], deletedIds: new Set() };
@@ -13,20 +13,39 @@ const els = {
   toast:    document.getElementById('toast'),
   exportBtn:document.getElementById('exportBtn'),
   showDeleted:document.getElementById('showDeleted'),
-  diag:     document.getElementById('diag')
 };
 
 init();
 
 async function init() {
   try {
-    STATE.templates = await loadTemplatesWithDiagnostics();
+    // EXACTLY like your working code
+    const res = await fetch('links_titles.json', { cache: 'no-store' });
+    const data = await res.json();
+
+    // Map whatever shape you have into the UI shape
+    const items = Array.isArray(data) ? data
+                : Array.isArray(data.items) ? data.items
+                : Array.isArray(data.data) ? data.data
+                : Array.isArray(data.results) ? data.results
+                : [];
+
+    STATE.templates = items.map((t, i) => ({
+      id: t.id || `item-${i}`,
+      title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
+      text: t.text || t.body || t.content || t.linkText || '',
+      // one fixed category (ENT)
+      categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '') ]
+    }));
+
   } catch (e) {
-    showFatal(`Couldn’t load templates: ${e.message || e}`);
+    console.error('Failed to load JSON data:', e);
+    // show a friendly message on page as well
+    els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ Failed to load JSON data. Check that <code>links_titles.json</code> is in the repo root and published to Pages.</li>`;
     return;
   }
 
-  // Fixed category dropdown
+  // Build fixed category dropdown
   ENT_CATEGORIES.forEach(c => {
     const o = document.createElement('option'); o.value = c; o.textContent = c;
     els.category.appendChild(o);
@@ -42,83 +61,8 @@ function bindEvents() {
   els.copyBtn.addEventListener('click', copyOutput);
   els.exportBtn.addEventListener('click', exportTemplatesJSON);
   els.showDeleted.addEventListener('change', renderList);
-
-  // Theme toggle
-  (() => {
-    const btn = document.getElementById('themeToggle'); if (!btn) return;
-    const KEY = 'xtheme';
-    const apply = (val) => {
-      document.documentElement.dataset.theme = val;
-      if (val === 'dark') document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
-    };
-    const saved = localStorage.getItem(KEY); if (saved) apply(saved);
-    btn.addEventListener('click', () => {
-      const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-      const next = cur === 'dark' ? 'light' : 'dark';
-      localStorage.setItem(KEY, next); apply(next);
-    });
-  })();
 }
 
-/* ---------------- Loader with diagnostics ---------------- */
-async function loadTemplatesWithDiagnostics() {
-  const origin = location.origin;
-  // repoPath like "/accurx_text_maker/"
-  const parts = location.pathname.split('/').filter(Boolean);
-  const repoPath = parts.length ? `/${parts[0]}/` : '/';
-  const basePath = location.pathname.endsWith('/') ? location.pathname : location.pathname.replace(/[^/]+$/, '');
-
-  const names = ['templates.json', 'link_titles.json', 'links_titles.json'];
-
-  // Try relative, basePath, repoPath, and absolute to be extra safe
-  const candidates = [];
-  for (const n of names) {
-    candidates.push(n);
-    candidates.push(basePath + n);
-    candidates.push(repoPath + n);
-    candidates.push(`${origin}${repoPath}${n}`);
-    candidates.push(`${origin}${basePath}${n}`);
-  }
-
-  const triedLogs = [];
-  for (const url of [...new Set(candidates)]) {
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      triedLogs.push(`${url} → ${res.status}`);
-      if (!res.ok) continue;
-
-      const data = await res.json().catch(() => null);
-      const items = normaliseTopLevel(data);
-      if (!Array.isArray(items) || !items.length) continue;
-
-      const mapped = items.map((t, i) => ({
-        id: t.id || `item-${i}`,
-        title: t.title || t.name || t.label || t.heading || `Item ${i+1}`,
-        text: t.text || t.body || t.content || t.linkText || '',
-        categories: [ normaliseCat(t.categories) || inferCategoryENT(t.title || '', t.text || '') ]
-      }));
-
-      els.diag.textContent = `Loaded: ${url}`;
-      return mapped;
-    } catch (e) {
-      triedLogs.push(`${url} → error`);
-    }
-  }
-
-  els.diag.textContent = 'Tried: ' + triedLogs.join('  |  ');
-  throw new Error(`No templates file found (checked: ${names.join(', ')})`);
-}
-
-function normaliseTopLevel(data) {
-  if (Array.isArray(data)) return data;
-  if (data && Array.isArray(data.items)) return data.items;
-  if (data && Array.isArray(data.data)) return data.data;
-  if (data && Array.isArray(data.results)) return data.results;
-  return [];
-}
-
-/* ---------------- Filtering & render ---------------- */
 function applyFilters() {
   const q = (els.search.value || '').trim().toLowerCase();
   const cat = els.category.value || '';
@@ -191,7 +135,6 @@ function updateComposer() {
   els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
 }
 
-/* ---------------- Actions ---------------- */
 async function copyOutput() {
   try {
     await navigator.clipboard.writeText(els.output.value);
@@ -222,7 +165,7 @@ function exportTemplatesJSON() {
   toast('Downloaded templates.json');
 }
 
-/* ---------------- Utils ---------------- */
+/* Utils */
 function toast(msg) {
   els.toast.textContent = msg;
   els.toast.className = 'show';
@@ -246,7 +189,7 @@ function inferCategoryENT(title, body) {
   if (has(['ent','nose and throat','otolaryngology'])) return 'H&N';
   return 'H&N';
 }
-// Normalise string/array → one of the fixed set
+// Normalise string/array → fixed set
 function normaliseCat(cats) {
   const s = Array.isArray(cats) ? (cats[0] || '') : (cats || '');
   const v = s.toLowerCase().replace(/\s*&\s*/,'&').trim();
@@ -255,8 +198,4 @@ function normaliseCat(cats) {
   if (v === 'h&n' || /head/.test(v) || /neck/.test(v)) return 'H&N';
   if (/^paed/.test(v) || /child/.test(v)) return 'Paeds';
   return '';
-}
-function showFatal(msg) {
-  els.list.innerHTML = `<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
-  els.diag.textContent = msg;
 }
