@@ -27,6 +27,20 @@
       <button id="themeToggle" class="btn btn-ghost" title="Toggle theme" aria-label="Toggle theme">Theme</button>
       <button id="viewCards" class="btn btn-ghost" aria-pressed="true">Cards</button>
 			<button id="viewList"  class="btn btn-ghost" aria-pressed="false">List</button>
+      
+      <!-- Add after the Theme button -->
+<button id="viewBtn" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false">View</button>
+<div id="viewMenu" class="menu" hidden>
+  <button type="button" data-view="list">List (default)</button>
+  <button type="button" data-view="cards">Cards</button>
+</div>
+
+<button id="themeBtn" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false">Theme</button>
+<div id="themeMenu" class="menu" hidden>
+  <button type="button" data-theme="system">System</button>
+  <button type="button" data-theme="light">Light</button>
+  <button type="button" data-theme="dark">Dark</button>
+</div>
     </div>
     <!-- Always-present diagnostics line -->
     <div id="diag" style="color:#888;font-size:12px;margin-top:4px"></div>
