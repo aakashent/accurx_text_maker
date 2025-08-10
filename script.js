@@ -85,6 +85,20 @@ function bindEvents(){
   els.exportBtn.addEventListener('click', exportTemplatesJSON);
 }
 
+// View toggle: Cards <-> List
+(() => {
+  const btnCards = document.getElementById('viewCards');
+  const btnList  = document.getElementById('viewList');
+  if (!btnCards || !btnList) return;
+  const setMode = (mode) => {
+    document.body.classList.toggle('list-mode', mode === 'list');
+    btnCards.setAttribute('aria-pressed', String(mode === 'cards'));
+    btnList.setAttribute('aria-pressed',  String(mode === 'list'));
+  };
+  btnCards.addEventListener('click', () => setMode('cards'));
+  btnList .addEventListener('click', () => setMode('list'));
+})();
+
 function applyFilters(){
   const q=(els.search.value||'').toLowerCase().trim();
   const cat=els.category.value||'';
