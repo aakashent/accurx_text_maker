@@ -61,6 +61,14 @@ async function init(){
   ENT_CATEGORIES.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; els.category.appendChild(o); });
 
   bindEvents();
+  
+  // Default to list mode
+document.body.classList.add('list-mode');
+
+// Menus
+setupViewMenu();
+setupThemeMenu();
+  
   applyFilters();
 }
 
