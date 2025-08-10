@@ -68,6 +68,7 @@ document.body.classList.add('list-mode');
 // Menus
 setupViewMenu();
 setupThemeMenu();
+
   
   applyFilters();
 }
@@ -145,7 +146,9 @@ function makeCard(t){
       <input type="checkbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
       <div class="meta">
         <h3>${escapeHTML(t.title||'')}</h3>
-        <div class="tags"><span class="tag tag--${cat}">${cat}</span></div>
+        <div class="tags">
+  <span class="tag tag--${cat}" data-cat="${cat}" data-id="${t.id}" role="button" tabindex="0" title="Click to change category">${cat}</span>
+</div>
         <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
       </div>
       <div class="card-actions">
@@ -270,6 +273,8 @@ document.addEventListener('click', () => {
   document.querySelectorAll('.menu').forEach(m => m.hidden = true);
   document.querySelectorAll('[aria-haspopup="menu"]').forEach(b => b.setAttribute('aria-expanded','false'));
 });
+
+
 
 /* ---------- Helpers ---------- */
 function snippet(text,max=160){ const s=(text||'').replace(/\s+/g,' ').trim(); return s.length>max? s.slice(0,max-1)+'…':s; }
