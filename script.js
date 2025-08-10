@@ -207,26 +207,33 @@ function exportTemplatesJSON(){
   document.body.appendChild(a); a.click(); a.remove(); toast('Downloaded templates.json');
 }
 
-function setupViewMenu(){
-  const btn = document.getElementById('viewBtn');
-  const menu = document.getElementById('viewMenu');
-  if (!btn || !menu) return;
+function setupViewMenu() {
+  const viewBtn = document.querySelector('#viewBtn');
+  const menu = document.createElement('div');
+  menu.className = 'menu menu--view';
+  menu.hidden = true;
 
-  const apply = (mode) => {
-    document.body.classList.toggle('list-mode', mode === 'list');
-    localStorage.setItem('xview', mode);
-    btn.textContent = `View: ${mode === 'list' ? 'List' : 'Cards'}`;
-    applyFilters();
-  };
-  // restore saved
-  apply(localStorage.getItem('xview') || 'list');
+  menu.innerHTML = `
+    <button type="button" data-view="list">List (default)</button>
+    <button type="button" data-view="cards">Cards</button>
+  `;
 
-  btn.addEventListener('click', (e)=>toggleMenu(menu, btn, e));
-  menu.addEventListener('click', (e)=>{
-    const v = e.target.closest('button')?.dataset.view;
-    if (!v) return;
-    apply(v);
-    menu.hidden = true; btn.setAttribute('aria-expanded','false');
+  // Wrap button and menu in a positioned container
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  viewBtn.parentNode.insertBefore(wrapper, viewBtn);
+  wrapper.appendChild(viewBtn);
+  wrapper.appendChild(menu);
+
+  viewBtn.addEventListener('click', () => {
+    menu.hidden = !menu.hidden;
+  });
+
+  menu.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    setView(btn.dataset.view);
+    menu.hidden = true;
   });
 }
 
