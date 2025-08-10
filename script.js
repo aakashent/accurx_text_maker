@@ -93,20 +93,6 @@ function bindEvents(){
   els.exportBtn.addEventListener('click', exportTemplatesJSON);
 }
 
-// View toggle: Cards <-> List
-(() => {
-  const btnCards = document.getElementById('viewCards');
-  const btnList  = document.getElementById('viewList');
-  if (!btnCards || !btnList) return;
-  const setMode = (mode) => {
-    document.body.classList.toggle('list-mode', mode === 'list');
-    btnCards.setAttribute('aria-pressed', String(mode === 'cards'));
-    btnList.setAttribute('aria-pressed',  String(mode === 'list'));
-  };
-  btnCards.addEventListener('click', () => setMode('cards'));
-  btnList .addEventListener('click', () => setMode('list'));
-})();
-
 function applyFilters(){
   const q=(els.search.value||'').toLowerCase().trim();
   const cat=els.category.value||'';
@@ -159,7 +145,7 @@ function makeCard(t){
       <input type="checkbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
       <div class="meta">
         <h3>${escapeHTML(t.title||'')}</h3>
-        <div class="tags"><span class="tag tag--${cat.replace('&','\\&')}">${cat}</span></div>
+        <div class="tags"><span class="tag tag--${cat}">${cat}</span></div>
         <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
       </div>
       <div class="card-actions">
