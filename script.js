@@ -112,38 +112,69 @@ function applyFilters(){
 }
 
 function renderList(){
-  els.list.innerHTML='';
-  STATE.filtered.forEach(t=>{
-    const li=document.createElement('li'); li.className='card';
-    const checked=STATE.selectedIds.includes(t.id);
-    const disabled=!checked && STATE.selectedIds.length>=3;
-    li.innerHTML=`
-      <div class="card-inner">
-        <input type="checkbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
-        <div class="meta">
-          <h3>${escapeHTML(t.title||'')}</h3>
-          <div class="tags"><span class="tag">${normaliseCat(t.categories)||'H&N'}</span></div>
-          <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
-        </div>
-        <div class="card-actions">
-          <a class="icon-btn" href="${t.url||'#'}" target="_blank" rel="noopener">Open</a>
-          <button class="icon-btn" data-act="delete">${STATE.deletedIds.has(t.id)?'Undo':'Delete'}</button>
-        </div>
-      </div>`;
-    li.querySelector('input').addEventListener('change', e=>{
-      const id=e.target.value;
-      if(e.target.checked){ if(!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id); }
-      else { STATE.selectedIds=STATE.selectedIds.filter(x=>x!==id); }
-      renderList();
+  els.list.innerHTML = '';
+
+  const inListMode = document.body.classList.contains('list-mode');
+  if (!inListMode) {
+    // Cards view: flat render (unchanged)
+    STATE.filtered.forEach(t => {
+      els.list.appendChild(makeCard(t));
     });
-    li.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
-      if(STATE.deletedIds.has(t.id)){ STATE.deletedIds.delete(t.id); toast('Restored'); }
-      else { STATE.deletedIds.add(t.id); toast('Deleted'); }
-      applyFilters();
+  } else {
+    // List view: group by category in ENT order
+    const order = ["Otology","Rhinology","H&N","Paeds"];
+    const groups = new Map(order.map(c => [c, []]));
+    STATE.filtered.forEach(t => {
+      const c = normaliseCat(t.categories) || 'H&N';
+      if (!groups.has(c)) groups.set(c, []);
+      groups.get(c).push(t);
     });
-    els.list.appendChild(li);
-  });
+
+    for (const cat of order) {
+      const items = groups.get(cat) || [];
+      if (!items.length) continue;
+      const h = document.createElement('li');
+      h.className = 'group-head';
+      h.textContent = cat;
+      els.list.appendChild(h);
+      items.forEach(t => els.list.appendChild(makeCard(t)));
+    }
+  }
   updateComposer();
+}
+
+// factor out your existing card markup here (unchanged)
+function makeCard(t){
+  const li = document.createElement('li'); li.className = 'card';
+  const checked = STATE.selectedIds.includes(t.id);
+  const disabled = !checked && STATE.selectedIds.length >= 3;
+
+  li.innerHTML = `
+    <div class="card-inner">
+      <input type="checkbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
+      <div class="meta">
+        <h3>${escapeHTML(t.title||'')}</h3>
+        <div class="tags"><span class="tag">${normaliseCat(t.categories)||'H&N'}</span></div>
+        <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
+      </div>
+      <div class="card-actions">
+        <a class="icon-btn" href="${t.url||'#'}" target="_blank" rel="noopener">Open</a>
+        <button class="icon-btn" data-act="delete">${STATE.deletedIds.has(t.id)?'Undo':'Delete'}</button>
+      </div>
+    </div>`;
+
+  li.querySelector('input').addEventListener('change', e=>{
+    const id = e.target.value;
+    if (e.target.checked) { if (!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id); }
+    else { STATE.selectedIds = STATE.selectedIds.filter(x => x !== id); }
+    renderList();
+  });
+  li.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
+    if (STATE.deletedIds.has(t.id)) { STATE.deletedIds.delete(t.id); toast('Restored'); }
+    else { STATE.deletedIds.add(t.id); toast('Deleted'); }
+    applyFilters();
+  });
+  return li;
 }
 
 function updateComposer(){
