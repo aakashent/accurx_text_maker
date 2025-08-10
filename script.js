@@ -113,15 +113,13 @@ function applyFilters(){
 
 function renderList(){
   els.list.innerHTML = '';
-
   const inListMode = document.body.classList.contains('list-mode');
+
   if (!inListMode) {
-    // Cards view: flat render (unchanged)
-    STATE.filtered.forEach(t => {
-      els.list.appendChild(makeCard(t));
-    });
+    // Cards view: flat
+    STATE.filtered.forEach(t => els.list.appendChild(makeCard(t)));
   } else {
-    // List view: group by category in ENT order
+    // List view: group by ENT order
     const order = ["Otology","Rhinology","H&N","Paeds"];
     const groups = new Map(order.map(c => [c, []]));
     STATE.filtered.forEach(t => {
@@ -129,7 +127,6 @@ function renderList(){
       if (!groups.has(c)) groups.set(c, []);
       groups.get(c).push(t);
     });
-
     for (const cat of order) {
       const items = groups.get(cat) || [];
       if (!items.length) continue;
@@ -148,13 +145,13 @@ function makeCard(t){
   const li = document.createElement('li'); li.className = 'card';
   const checked = STATE.selectedIds.includes(t.id);
   const disabled = !checked && STATE.selectedIds.length >= 3;
-
+  const cat = normaliseCat(t.categories) || 'H&N';
   li.innerHTML = `
     <div class="card-inner">
       <input type="checkbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
       <div class="meta">
         <h3>${escapeHTML(t.title||'')}</h3>
-        <div class="tags"><span class="tag">${normaliseCat(t.categories)||'H&N'}</span></div>
+        <div class="tags"><span class="tag tag--${cat.replace('&','\\&')}">${cat}</span></div>
         <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
       </div>
       <div class="card-actions">
@@ -162,15 +159,14 @@ function makeCard(t){
         <button class="icon-btn" data-act="delete">${STATE.deletedIds.has(t.id)?'Undo':'Delete'}</button>
       </div>
     </div>`;
-
   li.querySelector('input').addEventListener('change', e=>{
     const id = e.target.value;
-    if (e.target.checked) { if (!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id); }
+    if (e.target.checked){ if (!STATE.selectedIds.includes(id)) STATE.selectedIds.push(id); }
     else { STATE.selectedIds = STATE.selectedIds.filter(x => x !== id); }
     renderList();
   });
   li.querySelector('[data-act="delete"]').addEventListener('click', ()=>{
-    if (STATE.deletedIds.has(t.id)) { STATE.deletedIds.delete(t.id); toast('Restored'); }
+    if (STATE.deletedIds.has(t.id)){ STATE.deletedIds.delete(t.id); toast('Restored'); }
     else { STATE.deletedIds.add(t.id); toast('Deleted'); }
     applyFilters();
   });
@@ -213,6 +209,73 @@ function exportTemplatesJSON(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='templates.json';
   document.body.appendChild(a); a.click(); a.remove(); toast('Downloaded templates.json');
 }
+
+function setupViewMenu(){
+  const btn = document.getElementById('viewBtn');
+  const menu = document.getElementById('viewMenu');
+  if (!btn || !menu) return;
+
+  const apply = (mode) => {
+    document.body.classList.toggle('list-mode', mode === 'list');
+    localStorage.setItem('xview', mode);
+    btn.textContent = `View: ${mode === 'list' ? 'List' : 'Cards'}`;
+    applyFilters();
+  };
+  // restore saved
+  apply(localStorage.getItem('xview') || 'list');
+
+  btn.addEventListener('click', (e)=>toggleMenu(menu, btn, e));
+  menu.addEventListener('click', (e)=>{
+    const v = e.target.closest('button')?.dataset.view;
+    if (!v) return;
+    apply(v);
+    menu.hidden = true; btn.setAttribute('aria-expanded','false');
+  });
+}
+
+function setupThemeMenu(){
+  const btn = document.getElementById('themeBtn');
+  const menu = document.getElementById('themeMenu');
+  if (!btn || !menu) return;
+
+  const KEY = 'xtheme';
+  const apply = (mode) => {
+    // system = remove override, use media query
+    if (mode === 'system'){ document.documentElement.removeAttribute('data-theme'); }
+    else { document.documentElement.dataset.theme = mode; }
+    localStorage.setItem(KEY, mode);
+    btn.textContent = `Theme: ${mode[0].toUpperCase()+mode.slice(1)}`;
+  };
+  // restore saved (default = system)
+  apply(localStorage.getItem(KEY) || 'system');
+
+  btn.addEventListener('click', (e)=>toggleMenu(menu, btn, e));
+  menu.addEventListener('click', (e)=>{
+    const val = e.target.closest('button')?.dataset.theme;
+    if (!val) return;
+    apply(val);
+    menu.hidden = true; btn.setAttribute('aria-expanded','false');
+  });
+}
+
+function toggleMenu(menu, btn, evt){
+  evt.stopPropagation();
+  const wasOpen = !menu.hidden;
+  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+  if (!wasOpen){ 
+    const rect = btn.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.style.top  = (rect.bottom + 4 + window.scrollY) + 'px';
+    menu.hidden = false; 
+    btn.setAttribute('aria-expanded','true');
+  } else {
+    btn.setAttribute('aria-expanded','false');
+  }
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+  document.querySelectorAll('[aria-haspopup="menu"]').forEach(b => b.setAttribute('aria-expanded','false'));
+});
 
 /* ---------- Helpers ---------- */
 function snippet(text,max=160){ const s=(text||'').replace(/\s+/g,' ').trim(); return s.length>max? s.slice(0,max-1)+'…':s; }
