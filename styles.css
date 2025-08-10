@@ -101,5 +101,17 @@ textarea{
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--brand);color:var(--brand-ink);padding:8px 12px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s}
 #toast.show{opacity:1}
 
+/* List view (denser, faster scanning) */
+.list-mode .card-list{grid-template-columns:1fr}
+.list-mode .card{box-shadow:none}
+.list-mode .card-inner{
+  cursor:pointer; padding:8px 10px; gap:12px;
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center;
+}
+.list-mode .meta h3{margin:0; font-size:15px}
+.list-mode .snippet{display:none} /* hide long body in list view */
+.list-mode .tag{font-size:11px; padding:1px 6px}
+.list-mode .icon-btn{padding:2px 6px}
+
 /* Accessibility */
 :focus-visible{outline:none; box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)}
