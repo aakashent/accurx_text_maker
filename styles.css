@@ -171,5 +171,13 @@ textarea{
 .tag--H\&N{ background:color-mix(in oklab, var(--cat-hn) 14%, var(--chip)); border-color: color-mix(in oklab, var(--cat-hn) 40%, var(--line)); }
 .tag--Paeds{ background:color-mix(in oklab, var(--cat-paeds) 14%, var(--chip)); border-color: color-mix(in oklab, var(--cat-paeds) 40%, var(--line)); }
 
+.menu--view {
+  position: absolute;
+  top: 100%; /* directly below the button */
+  left: 0;
+  margin-top: 4px;
+  z-index: 1000;
+}
+
 /* Accessibility */
 :focus-visible{outline:none; box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)}
