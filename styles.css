@@ -119,5 +119,57 @@ textarea{
   border-bottom:1px solid var(--line);
 }
 
+/* Manual theme override wins (button controls this) */
+:root[data-theme="dark"]{
+  --bg:#0f1115; --ink:#e8e8e8; --ink-muted:#9aa3ad; --line:#23262c;
+  --brand:#79d3ca; --brand-ink:#091012; --chip:#162022; --shadow:none; --focus:#3391ff;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --ink:#1f2328; --ink-muted:#5d6670; --line:#e9eef2;
+  --brand:#2b7a78; --brand-ink:#ffffff; --chip:#f4f8f7; --shadow:0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+}
+
+/* Simple popover menus */
+.menu{
+  position:absolute; z-index:30; margin-top:8px; border:1px solid var(--line); border-radius:10px;
+  background:var(--bg); box-shadow:var(--shadow); padding:6px; display:flex; flex-direction:column;
+}
+.menu[hidden]{display:none}
+.menu button{
+  border:0; background:transparent; padding:8px 12px; text-align:left; cursor:pointer; border-radius:8px;
+}
+.menu button:hover{background:color-mix(in oklab, var(--brand) 10%, transparent)}
+
+/* Ensure card actions are always visible (incl. cards view) */
+.card-inner{align-items:flex-start}
+.card-actions{margin-left:auto; display:flex; gap:8px; align-self:flex-start}
+
+/* List view remains dense */
+.list-mode .card-list{grid-template-columns:1fr}
+.list-mode .card{box-shadow:none}
+.list-mode .card-inner{cursor:pointer; padding:8px 10px; gap:12px; display:grid; grid-template-columns:auto 1fr auto; align-items:center}
+.list-mode .meta h3{margin:0; font-size:15px}
+.list-mode .snippet{display:none}
+.list-mode .tag{font-size:11px; padding:1px 6px}
+.list-mode .icon-btn{padding:2px 6px}
+
+/* Group headers in list view */
+.list-mode .group-head{
+  padding:8px 10px; margin:8px 0 4px; font-weight:700; color:var(--ink-muted);
+  border-bottom:1px solid var(--line);
+}
+
+/* Category colours (chips) */
+:root{
+  --cat-otology:#4c8bf5;   /* blue */
+  --cat-rhinology:#2bb673; /* green */
+  --cat-hn:#f59f00;        /* amber */
+  --cat-paeds:#c678dd;     /* purple */
+}
+.tag--Otology{ background:color-mix(in oklab, var(--cat-otology) 14%, var(--chip)); border-color: color-mix(in oklab, var(--cat-otology) 40%, var(--line)); }
+.tag--Rhinology{ background:color-mix(in oklab, var(--cat-rhinology) 14%, var(--chip)); border-color: color-mix(in oklab, var(--cat-rhinology) 40%, var(--line)); }
+.tag--H\&N{ background:color-mix(in oklab, var(--cat-hn) 14%, var(--chip)); border-color: color-mix(in oklab, var(--cat-hn) 40%, var(--line)); }
+.tag--Paeds{ background:color-mix(in oklab, var(--cat-paeds) 14%, var(--chip)); border-color: color-mix(in oklab, var(--cat-paeds) 40%, var(--line)); }
+
 /* Accessibility */
 :focus-visible{outline:none; box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)}
