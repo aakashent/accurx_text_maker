@@ -179,5 +179,9 @@ textarea{
   z-index: 1000;
 }
 
+/* Anchor dropdown directly under its trigger */
+.menu-anchor{ position:relative; display:inline-block }
+.menu--below{ position:absolute; top:100%; left:0; margin-top:4px; z-index:1000 }
+
 /* Accessibility */
 :focus-visible{outline:none; box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)}
