@@ -1,4 +1,4 @@
-/* v1.3.0 – handles {url:title} JSON + ENT categories + export */
+/* v1.4.0 – templates.json first, fallback to links_titles.json; anchored menus; category picker; ENT categories; export */
 
 const ENT_CATEGORIES = ["Otology","Rhinology","H&N","Paeds"];
 const STATE = { templates: [], filtered: [], selectedIds: [], deletedIds: new Set() };
@@ -19,69 +19,79 @@ const els = {
 init();
 
 async function init(){
-  // Absolute path + cache-buster (works on GitHub Pages)
-  const url = `/accurx_text_maker/links_titles.json?v=${Date.now()}`;
-
   try{
-    const res = await fetch(url, { cache: 'no-store' });
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-
-    // ---- NORMALISE YOUR SHAPE ----
-    // 1) { "url": "Title", ... }  -> [{ url, title }]
-    if (data && typeof data === 'object' && !Array.isArray(data)) {
-      const valuesAreStrings = Object.values(data).every(v => typeof v === 'string');
-      if (valuesAreStrings) {
-        STATE.templates = Object.entries(data).map(([u, title], i) => ({
-          id: `item-${i}`,
-          url: u,
-          title: String(title || '').trim() || `Item ${i+1}`,
-          text: u, // so preview isn’t blank; we can copy the link
-          categories: [ inferCategoryENT(title, u) ] // one category with Paeds override
-        }));
-      } else {
-        // If it’s a grouped object like { Section: [ ... ] }, flatten
-        const flat = [];
-        for (const v of Object.values(data)) if (Array.isArray(v)) flat.push(...v);
-        STATE.templates = flat.map((t,i)=>toTemplate(t,i));
-      }
-    } else if (Array.isArray(data)) {
-      STATE.templates = data.map((t,i)=>toTemplate(t,i));
-    } else {
-      throw new Error('Unsupported JSON structure');
-    }
-
-    els.diag.textContent = `Loaded ${STATE.templates.length} items from ${location.origin}${url.replace(/\?v=.*/,'')}`;
+    STATE.templates = await loadData();
+    els.diag && (els.diag.textContent = `Loaded ${STATE.templates.length} items`);
   }catch(e){
-    showFatal(`Couldn’t load links_titles.json – ${e.message}`);
+    showFatal(`Couldn’t load data – ${e.message}`);
     return;
   }
 
-  // Fixed category dropdown
+  // Fixed category dropdown options
   ENT_CATEGORIES.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; els.category.appendChild(o); });
 
   bindEvents();
-  
-  // Default to list mode
-document.body.classList.add('list-mode');
 
-// Menus
-setupViewMenu();
-setupThemeMenu();
-setupCategoryPicker();
-  
+  // Default to list mode, then wire menus and category picker
+  document.body.classList.add('list-mode');
+  setupViewMenu();
+  setupThemeMenu();
+  setupCategoryPicker();
+
   applyFilters();
 }
 
+/* ---------- Data loading ---------- */
+async function loadData(){
+  // 1) templates.json – preferred (array of objects)
+  try{
+    const res = await fetch('/accurx_text_maker/templates.json?v=' + Date.now(), { cache:'no-store' });
+    if (res.ok){
+      const data = await res.json();
+      if (Array.isArray(data) && data.length){
+        return data.map((t,i)=>({
+          id: t.id || `item-${i}`,
+          url: t.url || t.link || '',
+          title: t.title || `Item ${i+1}`,
+          text: t.text || t.url || '',
+          categories: [ normaliseCat(t.category || t.categories) || inferCategoryENT(t.title||'', t.text||t.url||'') ]
+        }));
+      }
+    }
+  }catch{/* ignore and fall back */}
+
+  // 2) links_titles.json – map { "url": "Title", ... }
+  const res = await fetch('/accurx_text_maker/links_titles.json?v=' + Date.now(), { cache:'no-store' });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    // { url: "Title" }
+    return Object.entries(data).map(([u, title], i) => ({
+      id: `item-${i}`,
+      url: u,
+      title: String(title || '').trim() || `Item ${i+1}`,
+      text: u, // so preview isn’t blank; copy will include URL
+      categories: [ inferCategoryENT(title, u) ]
+    }));
+  }
+
+  if (Array.isArray(data)) {
+    // Array of objects – be permissive
+    return data.map((t,i)=>toTemplate(t,i));
+  }
+
+  throw new Error('Unsupported JSON structure');
+}
+
 function toTemplate(t,i){
-  // accept a variety of keys; fall back to URL if present
   const title = t.title || t.name || t.label || t.heading || t.key || `Item ${i+1}`;
   const url   = t.url || t.link || t.href || t.path || '';
   const body  = t.text || t.body || t.content || t.linkText || url || '';
   return {
     id: t.id || `item-${i}`,
     url, title, text: String(body),
-    categories: [ inferCategoryENT(title, body || url) ]
+    categories: [ normaliseCat(t.category || t.categories) || inferCategoryENT(title, body || url) ]
   };
 }
 
@@ -135,7 +145,6 @@ function renderList(){
   updateComposer();
 }
 
-// factor out your existing card markup here (unchanged)
 function makeCard(t){
   const li = document.createElement('li'); li.className = 'card';
   const checked = STATE.selectedIds.includes(t.id);
@@ -147,8 +156,8 @@ function makeCard(t){
       <div class="meta">
         <h3>${escapeHTML(t.title||'')}</h3>
         <div class="tags">
-  <span class="tag tag--${cat}" data-cat="${cat}" data-id="${t.id}" role="button" tabindex="0" title="Click to change category">${cat}</span>
-</div>
+          <span class="tag tag--${cat}" data-cat="${cat}" data-id="${t.id}" role="button" tabindex="0" title="Click to change category">${cat}</span>
+        </div>
         <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
       </div>
       <div class="card-actions">
@@ -194,7 +203,6 @@ async function copyOutput(){
 }
 
 function exportTemplatesJSON(){
-  // Export to the array-of-objects format you wanted
   const exportData = STATE.templates
     .filter(t=>!STATE.deletedIds.has(t.id))
     .map(t=>({
@@ -207,12 +215,13 @@ function exportTemplatesJSON(){
   document.body.appendChild(a); a.click(); a.remove(); toast('Downloaded templates.json');
 }
 
+/* ---------- View & Theme menus (anchored under their buttons) ---------- */
 function setupViewMenu(){
   const btn  = document.getElementById('viewBtn');
   const menu = document.getElementById('viewMenu');
   if (!btn || !menu) return;
 
-  // Move existing button + menu into a positioned wrapper
+  // Anchor the menu under the button
   if (!btn.parentElement.classList.contains('menu-anchor')) {
     const wrap = document.createElement('span');
     wrap.className = 'menu-anchor';
@@ -220,8 +229,8 @@ function setupViewMenu(){
     wrap.appendChild(btn);
     wrap.appendChild(menu);
   }
-  menu.classList.add('menu--below'); // ensures it sits under the button
-  menu.hidden = true;                // start closed
+  menu.classList.add('menu--below');
+  menu.hidden = true;
 
   const apply = (mode) => {
     document.body.classList.toggle('list-mode', mode === 'list');
@@ -229,10 +238,9 @@ function setupViewMenu(){
     btn.textContent = `View: ${mode === 'list' ? 'List' : 'Cards'}`;
     applyFilters();
   };
-  // restore saved (default list)
+  // Restore saved (default list)
   apply(localStorage.getItem('xview') || 'list');
 
-  // Open/close on button click
   btn.addEventListener('click', (e)=>{
     e.stopPropagation();
     const willOpen = menu.hidden;
@@ -241,139 +249,122 @@ function setupViewMenu(){
     btn.setAttribute('aria-expanded', String(willOpen));
   });
 
-  // Select a view
   menu.addEventListener('click', (e)=>{
     const choice = e.target.closest('button')?.dataset.view;
     if (!choice) return;
     apply(choice);
     menu.hidden = true;
-    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-expanded','false');
   });
 
-  // Click outside closes it
   document.addEventListener('click', ()=>{
-    if (!menu.hidden) {
-      menu.hidden = true;
-      btn.setAttribute('aria-expanded', 'false');
-    }
+    if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded','false'); }
   });
 }
 
 function setupThemeMenu(){
-  const btn = document.getElementById('themeBtn');
+  const btn  = document.getElementById('themeBtn');
   const menu = document.getElementById('themeMenu');
   if (!btn || !menu) return;
 
+  if (!btn.parentElement.classList.contains('menu-anchor')) {
+    const wrap = document.createElement('span');
+    wrap.className = 'menu-anchor';
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+  }
+  menu.classList.add('menu--below');
+  menu.hidden = true;
+
   const KEY = 'xtheme';
   const apply = (mode) => {
-    // system = remove override, use media query
     if (mode === 'system'){ document.documentElement.removeAttribute('data-theme'); }
     else { document.documentElement.dataset.theme = mode; }
     localStorage.setItem(KEY, mode);
     btn.textContent = `Theme: ${mode[0].toUpperCase()+mode.slice(1)}`;
   };
-  // restore saved (default = system)
   apply(localStorage.getItem(KEY) || 'system');
 
-  btn.addEventListener('click', (e)=>toggleMenu(menu, btn, e));
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const willOpen = menu.hidden;
+    document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+    menu.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
+  });
+
   menu.addEventListener('click', (e)=>{
     const val = e.target.closest('button')?.dataset.theme;
     if (!val) return;
     apply(val);
-    menu.hidden = true; btn.setAttribute('aria-expanded','false');
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded','false');
+  });
+
+  document.addEventListener('click', ()=>{
+    if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded','false'); }
   });
 }
-
-function toggleMenu(menu, btn, evt){
-  evt.stopPropagation();
-  const wasOpen = !menu.hidden;
-  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
-  if (!wasOpen){ 
-    const rect = btn.getBoundingClientRect();
-    menu.style.left = rect.left + 'px';
-    menu.style.top  = (rect.bottom + 4 + window.scrollY) + 'px';
-    menu.hidden = false; 
-    btn.setAttribute('aria-expanded','true');
-  } else {
-    btn.setAttribute('aria-expanded','false');
-  }
-}
-document.addEventListener('click', () => {
-  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
-  document.querySelectorAll('[aria-haspopup="menu"]').forEach(b => b.setAttribute('aria-expanded','false'));
-});
 
 /* ---------- Category picker (click the chip to open a menu) ---------- */
 function setupCategoryPicker(){
   // Build once
   let menu = document.getElementById('catMenu');
-  if (!menu) {
+  if (!menu){
     menu = document.createElement('div');
     menu.id = 'catMenu';
     menu.className = 'menu';
     menu.hidden = true;
-    // Buttons for each ENT category
     menu.innerHTML = ENT_CATEGORIES.map(c => `<button type="button" data-cat="${c}">${c}</button>`).join('');
     document.body.appendChild(menu);
 
-    // When a category is chosen
+    // Choose a category
     menu.addEventListener('click', (e)=>{
       const btn = e.target.closest('button'); if (!btn) return;
-      const cat = btn.dataset.cat;
-      const targetId = menu.dataset.targetId;
-      const item = STATE.templates.find(t => t.id === targetId);
-      if (item) item.categories = [cat];
-
-      // Close and refresh
+      const id  = menu.dataset.targetId;
+      const item = STATE.templates.find(t => t.id === id);
+      if (item){ item.categories = [btn.dataset.cat]; }
       menu.hidden = true;
-      document.querySelectorAll('[aria-haspopup="menu"]').forEach(b => b.setAttribute('aria-expanded','false'));
       applyFilters();
     });
   }
 
-  // Open on chip click (event delegation)
+  // Open on chip click
   els.list.addEventListener('click', (e)=>{
     const tag = e.target.closest('.tag[data-id]');
     if (!tag) return;
-    openCatMenuForTag(tag, menu, e);
+    e.stopPropagation();
+    openCatMenu(tag, menu);
   });
-
-  // Also allow keyboard activation (Enter/Space)
+  // Keyboard activation
   els.list.addEventListener('keydown', (e)=>{
     const tag = e.target.closest('.tag[data-id]');
     if (!tag) return;
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      openCatMenuForTag(tag, menu, e);
-    }
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openCatMenu(tag, menu); }
   });
+
+  // Close on outside click
+  document.addEventListener('click', ()=>{ menu.hidden = true; });
 }
 
-function openCatMenuForTag(tag, menu, evt){
-  // Close any other menu
-  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
-
-  // Store the target item id so selection can update it
+function openCatMenu(tag, menu){
   menu.dataset.targetId = tag.dataset.id;
-
-  // Position near the chip
-  const rect = tag.getBoundingClientRect();
-  menu.style.left = rect.left + 'px';
-  menu.style.top  = (rect.bottom + 4 + window.scrollY) + 'px';
-
-  // Pre-highlight current (optional)
+  // Pre-highlight current
   const current = tag.dataset.cat;
-  menu.querySelectorAll('button').forEach(b => {
-    b.style.fontWeight = (b.dataset.cat === current) ? '700' : '400';
-  });
-
+  menu.querySelectorAll('button').forEach(b => b.style.fontWeight = (b.dataset.cat === current ? '700' : '400'));
+  // Place under the tag
+  const r = tag.getBoundingClientRect();
+  menu.style.left = r.left + 'px';
+  menu.style.top  = (r.bottom + 4 + window.scrollY) + 'px';
   menu.hidden = false;
 }
 
 /* ---------- Helpers ---------- */
 function snippet(text,max=160){ const s=(text||'').replace(/\s+/g,' ').trim(); return s.length>max? s.slice(0,max-1)+'…':s; }
 function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function toast(msg){ els.toast.textContent=msg; els.toast.className='show'; setTimeout(()=>els.toast.className='',1600); }
+function toast(msg){ els.toast && (els.toast.textContent=msg, els.toast.className='show', setTimeout(()=>els.toast.className='',1600)); }
+function showFatal(msg){ els.list.innerHTML=`<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`; els.diag && (els.diag.textContent = msg); }
 
 // ENT-only inference with Paeds override
 function inferCategoryENT(title, body){
@@ -391,11 +382,14 @@ function inferCategoryENT(title, body){
   return 'H&N';
 }
 function normaliseCat(cats){
-  const s = Array.isArray(cats) ? (cats[0]||'') : (cats||'');
-  const v = s.toLowerCase().replace(/\s*&\s*/,'&').trim();
+  if (!cats) return '';
+  const s = Array.isArray(cats) ? (cats[0]||'') : cats;
+  const v = String(s).toLowerCase().replace(/\s*&\s*/,'&').trim();
   if(/^oto/.test(v) || v==='ear') return 'Otology';
   if(/^rhin/.test(v) || ['nose','sinus','sinuses'].includes(v)) return 'Rhinology';
   if(v==='h&n' || /head|neck/.test(v)) return 'H&N';
   if(/^paed/.test(v) || /child/.test(v)) return 'Paeds';
+  // If it’s already a valid label
+  if (ENT_CATEGORIES.includes(s)) return s;
   return '';
 }
