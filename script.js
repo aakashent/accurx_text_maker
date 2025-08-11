@@ -68,7 +68,7 @@ document.body.classList.add('list-mode');
 // Menus
 setupViewMenu();
 setupThemeMenu();
-
+setupCategoryPicker();
   
   applyFilters();
 }
@@ -303,7 +303,72 @@ document.addEventListener('click', () => {
   document.querySelectorAll('[aria-haspopup="menu"]').forEach(b => b.setAttribute('aria-expanded','false'));
 });
 
+/* ---------- Category picker (click the chip to open a menu) ---------- */
+function setupCategoryPicker(){
+  // Build once
+  let menu = document.getElementById('catMenu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'catMenu';
+    menu.className = 'menu';
+    menu.hidden = true;
+    // Buttons for each ENT category
+    menu.innerHTML = ENT_CATEGORIES.map(c => `<button type="button" data-cat="${c}">${c}</button>`).join('');
+    document.body.appendChild(menu);
 
+    // When a category is chosen
+    menu.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button'); if (!btn) return;
+      const cat = btn.dataset.cat;
+      const targetId = menu.dataset.targetId;
+      const item = STATE.templates.find(t => t.id === targetId);
+      if (item) item.categories = [cat];
+
+      // Close and refresh
+      menu.hidden = true;
+      document.querySelectorAll('[aria-haspopup="menu"]').forEach(b => b.setAttribute('aria-expanded','false'));
+      applyFilters();
+    });
+  }
+
+  // Open on chip click (event delegation)
+  els.list.addEventListener('click', (e)=>{
+    const tag = e.target.closest('.tag[data-id]');
+    if (!tag) return;
+    openCatMenuForTag(tag, menu, e);
+  });
+
+  // Also allow keyboard activation (Enter/Space)
+  els.list.addEventListener('keydown', (e)=>{
+    const tag = e.target.closest('.tag[data-id]');
+    if (!tag) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openCatMenuForTag(tag, menu, e);
+    }
+  });
+}
+
+function openCatMenuForTag(tag, menu, evt){
+  // Close any other menu
+  document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+
+  // Store the target item id so selection can update it
+  menu.dataset.targetId = tag.dataset.id;
+
+  // Position near the chip
+  const rect = tag.getBoundingClientRect();
+  menu.style.left = rect.left + 'px';
+  menu.style.top  = (rect.bottom + 4 + window.scrollY) + 'px';
+
+  // Pre-highlight current (optional)
+  const current = tag.dataset.cat;
+  menu.querySelectorAll('button').forEach(b => {
+    b.style.fontWeight = (b.dataset.cat === current) ? '700' : '400';
+  });
+
+  menu.hidden = false;
+}
 
 /* ---------- Helpers ---------- */
 function snippet(text,max=160){ const s=(text||'').replace(/\s+/g,' ').trim(); return s.length>max? s.slice(0,max-1)+'…':s; }
