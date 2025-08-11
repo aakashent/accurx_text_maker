@@ -207,33 +207,55 @@ function exportTemplatesJSON(){
   document.body.appendChild(a); a.click(); a.remove(); toast('Downloaded templates.json');
 }
 
-function setupViewMenu() {
-  const viewBtn = document.querySelector('#viewBtn');
-  const menu = document.createElement('div');
-  menu.className = 'menu menu--view';
-  menu.hidden = true;
+function setupViewMenu(){
+  const btn  = document.getElementById('viewBtn');
+  const menu = document.getElementById('viewMenu');
+  if (!btn || !menu) return;
 
-  menu.innerHTML = `
-    <button type="button" data-view="list">List (default)</button>
-    <button type="button" data-view="cards">Cards</button>
-  `;
+  // Move existing button + menu into a positioned wrapper
+  if (!btn.parentElement.classList.contains('menu-anchor')) {
+    const wrap = document.createElement('span');
+    wrap.className = 'menu-anchor';
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+  }
+  menu.classList.add('menu--below'); // ensures it sits under the button
+  menu.hidden = true;                // start closed
 
-  // Wrap button and menu in a positioned container
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'relative';
-  viewBtn.parentNode.insertBefore(wrapper, viewBtn);
-  wrapper.appendChild(viewBtn);
-  wrapper.appendChild(menu);
+  const apply = (mode) => {
+    document.body.classList.toggle('list-mode', mode === 'list');
+    localStorage.setItem('xview', mode);
+    btn.textContent = `View: ${mode === 'list' ? 'List' : 'Cards'}`;
+    applyFilters();
+  };
+  // restore saved (default list)
+  apply(localStorage.getItem('xview') || 'list');
 
-  viewBtn.addEventListener('click', () => {
-    menu.hidden = !menu.hidden;
+  // Open/close on button click
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const willOpen = menu.hidden;
+    document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+    menu.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
   });
 
-  menu.addEventListener('click', e => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
-    setView(btn.dataset.view);
+  // Select a view
+  menu.addEventListener('click', (e)=>{
+    const choice = e.target.closest('button')?.dataset.view;
+    if (!choice) return;
+    apply(choice);
     menu.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+  });
+
+  // Click outside closes it
+  document.addEventListener('click', ()=>{
+    if (!menu.hidden) {
+      menu.hidden = true;
+      btn.setAttribute('aria-expanded', 'false');
+    }
   });
 }
 
