@@ -1,262 +1,324 @@
-:root {
-  --blue: #0077cc;
-  --blue-border: #99c2ff;
-  --pill-bg: #eef6ff;
-  --fav-bg: #fffaf0;
-  --fav-border: #ffd27f;
-  --text-dark: #222;
-  --text-mid: #555;
-  --text-light: #777;
-  --radius-card: 6px;
-  --radius-pill: 999px;
-  --border-light: #ddd;
-  --bg-page: #fafafa;
-  --bg-card: #fff;
-  --font-main: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+/* v1.2.1 (2025-08-09) Accurx Text Maker – refined clinical theme */
+:root{
+  --bg:#ffffff; --ink:#1f2328; --ink-muted:#5d6670; --line:#e9eef2;
+  --brand:#2b7a78; --brand-ink:#ffffff; --chip:#f4f8f7;
+  --radius:12px; --shadow:0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+  --focus:#0a84ff;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
-
-body {
-  font-family: var(--font-main);
-  background: var(--bg-page);
-  color: var(--text-dark);
-  line-height: 1.4;
-  margin: 0;
-  padding: 1rem;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-dark);
-}
-
-header small {
-  display: block;
-  color: var(--text-light);
-  font-size: 0.8rem;
-  line-height: 1.2;
-  margin-bottom: 1rem;
-}
-
-/* Card-like sections */
-section {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-card);
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-}
-
-section h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-  color: var(--text-dark);
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.header-line {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.subhead-hint {
-  font-size: 0.75rem;
-  font-weight: 400;
-  color: var(--text-light);
-}
-
-label {
-  font-size: 0.8rem;
-  color: var(--text-mid);
-  display: block;
-  margin-bottom: 0.25rem;
-  font-weight: 500;
-}
-
-input[type="text"],
-select,
-textarea {
-  width: 100%;
-  font-size: 1rem;
-  line-height: 1.4;
-  padding: 0.6rem 0.7rem;
-  border-radius: 4px;
-  border: 1px solid var(--border-light);
-  font-family: inherit;
-  box-sizing: border-box;
-}
-
-textarea {
-  min-height: 8rem;
-  resize: vertical;
-  white-space: pre-wrap;
-}
-
-/* helper text under inputs */
-.helper {
-  font-size: 0.7rem;
-  color: var(--text-light);
-  font-style: italic;
-  margin-top: -0.25rem;
-  margin-bottom: 0.5rem;
-  line-height: 1.2;
-}
-
-/* Selected list pills */
-.selected-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  min-height: 2rem;
-  padding: 0.5rem 0;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-card);
-}
-
-.selected-pill {
-  background: var(--pill-bg);
-  border: 1px solid var(--blue-border);
-  border-radius: var(--radius-pill);
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8rem;
-  line-height: 1.2;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.pill-text {
-  font-weight: 500;
-  color: var(--text-dark);
-}
-
-.pill-remove {
-  background: transparent;
-  border: none;
-  font-size: 0.8rem;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-}
-
-/* Empty / hint text inside containers */
-.empty-hint {
-  font-size: 0.8rem;
-  color: var(--text-light);
-  font-style: italic;
-  padding: 0.25rem 0.5rem;
-}
-
-/* Leaflet rows (results + favourites use same pattern) */
-.leaflet-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-card);
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  background: var(--bg-card);
-}
-
-.leaflet-row.favourite-row {
-  border-color: var(--fav-border);
-  background: var(--fav-bg);
-}
-
-.leaflet-main {
-  max-width: 70%;
-}
-
-.leaflet-title {
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-  color: var(--text-dark);
-  word-break: break-word;
-}
-
-.leaflet-url {
-  font-size: 0.8rem;
-  word-break: break-all;
-  color: var(--text-mid);
-}
-
-/* Button column in each row */
-.leaflet-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  text-align: right;
-}
-
-.btn-addremove {
-  font-size: 0.8rem;
-  padding: 0.4rem 0.6rem;
-  min-width: 4.5rem;
-  border-radius: 4px;
-  border: 1px solid var(--blue);
-  background: var(--blue);
-  color: #fff;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.btn-fav {
-  font-size: 0.8rem;
-  padding: 0.4rem 0.6rem;
-  min-width: 2.5rem;
-  border-radius: 4px;
-  border: 1px solid #ffaa00;
-  background: #ffaa00;
-  color: #000;
-  cursor: pointer;
-  font-weight: 600;
-  font-family: inherit;
-}
-
-/* Output / copy row */
-.copy-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
-}
-
-#copyBtn {
-  border-radius: 4px;
-  border: 1px solid var(--blue);
-  background: var(--blue);
-  color: #fff;
-  font-size: 0.9rem;
-  padding: 0.5rem 0.75rem;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-/* footer note */
-.footer-note {
-  text-align: center;
-  color: #aaa;
-  font-size: 0.7rem;
-  line-height: 1.2;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
-}
-
-/* small responsive polish */
-@media (min-width: 480px) {
-  h1 {
-    font-size: 1.3rem;
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1115; --ink:#e8e8e8; --ink-muted:#9aa3ad; --line:#23262c;
+    --brand:#79d3ca; --brand-ink:#091012; --chip:#162022; --shadow:none; --focus:#3391ff;
   }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+}
+
+/* Containers */
+.container{max-width:1100px;margin:0 auto;padding:16px}
+header.container{
+  position:sticky; top:0; z-index:20;
+  backdrop-filter:saturate(180%) blur(6px);
+  background:color-mix(in oklab, var(--bg) 92%, transparent)
+}
+
+/* Headings */
+h1{margin:6px 0 10px;font-size:24px;font-weight:700}
+h2{margin:0 0 4px;font-size:18px}
+
+/* Controls */
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.controls input[type=search], .controls select{
+  border:1px solid var(--line); background:transparent; color:var(--ink);
+  padding:10px 12px; border-radius:10px; min-width:220px; outline:none;
+}
+.controls input:focus, .controls select:focus{
+  box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)
+}
+#counter{margin-left:auto;color:var(--ink-muted);font-size:14px}
+.toggle{display:flex;align-items:center;gap:6px;color:var(--ink-muted);font-size:14px}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:1fr 420px;gap:16px}
+@media (max-width:960px){.layout{grid-template-columns:1fr}}
+
+/* Cards list */
+.card-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+
+/* Card with a subtle abstract waveform motif */
+.card{
+  position:relative;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:linear-gradient(0deg, rgba(0,0,0,.02), rgba(0,0,0,.02)) padding-box;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.card::after{
+  content:"";
+  position:absolute; inset:0;
+  opacity:.25; pointer-events:none;
+  background:
+    radial-gradient(80% 18% at 10% 120%, transparent 60%, color-mix(in oklab, var(--brand) 14%, transparent) 61%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='120' viewBox='0 0 320 120'><path d='M0,70 C40,40 80,100 120,70 160,40 200,100 240,70 280,40 320,90 360,60' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='3'/></svg>") center/cover no-repeat;
+}
+
+.card-inner{display:flex;gap:12px;padding:12px;cursor:pointer;align-items:flex-start}
+.card input{margin-top:4px;transform:scale(1.1)}
+.card-actions{margin-left:auto;display:flex;gap:8px;align-self:flex-start}
+.icon-btn{
+  border:1px solid var(--line);background:transparent;color:var(--ink-muted);
+  padding:4px 8px;border-radius:8px;cursor:pointer
+}
+.icon-btn:hover{border-color:var(--brand);color:var(--brand)}
+
+.meta h3{margin:0 0 6px;font-size:16px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.tag{
+  background:var(--chip);border:1px solid var(--line);color:var(--ink-muted);
+  padding:2px 8px;border-radius:999px;font-size:12px
+}
+.snippet{
+  margin:8px 0 0;color:var(--ink-muted);white-space:pre-wrap;
+  font-family:var(--mono);font-size:13px
+}
+
+/* Composer */
+.composer{
+  display:flex;flex-direction:column;gap:10px;
+  border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px;box-shadow:var(--shadow)
+}
+.composer-head{display:flex;align-items:center;gap:10px}
+.btn{
+  margin-left:auto; border:1px solid var(--brand); color:var(--brand-ink);
+  background:var(--brand); padding:8px 12px; border-radius:10px;
+  font-weight:650; cursor:pointer;
+}
+.btn:disabled{
+  opacity:.55;border-color:#a0a0a0;background:#a0a0a0;cursor:not-allowed
+}
+.btn-ghost{
+  margin-left:0;background:transparent;color:var(--ink);border:1px solid var(--line)
+}
+.btn-ghost:focus{
+  box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)
+}
+
+textarea{
+  width:100%; border:1px solid var(--line); border-radius:10px; padding:12px;
+  background:transparent; color:var(--ink); resize:vertical; min-height:220px;
+  font-family:inherit;
+}
+
+.hint{margin:0;color:var(--ink-muted);font-size:13px}
+
+/* Toast */
+#toast{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  background:var(--brand);color:var(--brand-ink);
+  padding:8px 12px;border-radius:999px;
+  opacity:0;pointer-events:none;transition:.25s
+}
+#toast.show{opacity:1}
+
+/* List view (denser, faster scanning) */
+.list-mode .card-list{grid-template-columns:1fr}
+.list-mode .card{box-shadow:none}
+.list-mode .card-inner{
+  cursor:pointer; padding:8px 10px; gap:12px;
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center;
+}
+.list-mode .meta h3{margin:0; font-size:15px}
+.list-mode .snippet{display:none} /* hide long body in list view */
+.list-mode .tag{font-size:11px; padding:1px 6px}
+.list-mode .icon-btn{padding:2px 6px}
+
+/* Group headers (only used in list view) */
+.list-mode .group-head{
+  padding:8px 10px; margin:8px 0 4px; font-weight:700; color:var(--ink-muted);
+  border-bottom:1px solid var(--line);
+}
+
+/* Manual theme override wins (button controls this) */
+:root[data-theme="dark"]{
+  --bg:#0f1115; --ink:#e8e8e8; --ink-muted:#9aa3ad; --line:#23262c;
+  --brand:#79d3ca; --brand-ink:#091012; --chip:#162022; --shadow:none; --focus:#3391ff;
+}
+:root[data-theme="light"]{
+  --bg:#ffffff; --ink:#1f2328; --ink-muted:#5d6670; --line:#e9eef2;
+  --brand:#2b7a78; --brand-ink:#ffffff; --chip:#f4f8f7;
+  --shadow:0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+}
+
+/* Simple popover menus */
+.menu{
+  position:absolute; z-index:30; margin-top:8px;
+  border:1px solid var(--line); border-radius:10px;
+  background:var(--bg); box-shadow:var(--shadow);
+  padding:6px; display:flex; flex-direction:column;
+}
+.menu[hidden]{display:none}
+.menu button{
+  border:0; background:transparent; padding:8px 12px;
+  text-align:left; cursor:pointer; border-radius:8px;
+}
+.menu button:hover{
+  background:color-mix(in oklab, var(--brand) 10%, transparent)
+}
+
+/* Anchor dropdown directly under its trigger */
+.menu-anchor{ position:relative; display:inline-block }
+.menu--below{
+  position:absolute; top:100%; left:0;
+  margin-top:4px; z-index:1000
+}
+
+/* Category colours (chips) */
+:root{
+  --cat-otology:#4c8bf5;   /* blue */
+  --cat-rhinology:#2bb673; /* green */
+  --cat-hn:#f59f00;        /* amber */
+  --cat-paeds:#c678dd;     /* purple */
+}
+.tag--Otology{
+  background:color-mix(in oklab, var(--cat-otology) 14%, var(--chip));
+  border-color: color-mix(in oklab, var(--cat-otology) 40%, var(--line));
+}
+.tag--Rhinology{
+  background:color-mix(in oklab, var(--cat-rhinology) 14%, var(--chip));
+  border-color: color-mix(in oklab, var(--cat-rhinology) 40%, var(--line));
+}
+.tag--H\&N{
+  background:color-mix(in oklab, var(--cat-hn) 14%, var(--chip));
+  border-color: color-mix(in oklab, var(--cat-hn) 40%, var(--line));
+}
+.tag--Paeds{
+  background:color-mix(in oklab, var(--cat-paeds) 14%, var(--chip));
+  border-color: color-mix(in oklab, var(--cat-paeds) 40%, var(--line));
+}
+
+/* View menu helper (not strictly required once we use .menu-anchor/.menu--below) */
+.menu--view {
+  position: absolute;
+  top: 100%; /* directly below the button */
+  left: 0;
+  margin-top: 4px;
+  z-index: 1000;
+}
+
+/* Accessibility */
+:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)
+}
+
+/* -------------------------------------- */
+/* NEW: summary lists (Selected / Favourites) */
+/* -------------------------------------- */
+
+.summary-list{
+  list-style:none;
+  margin:0 0 12px;
+  padding:0;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  background:var(--bg);
+  max-height:200px;
+  overflow:auto;
+  font-size:14px;
+  line-height:1.4;
+}
+
+.summary-list:empty{
+  display:none;
+}
+
+/* Individual rows inside summary lists */
+.chosen-row,
+.fave-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+  padding:8px 10px;
+  border-bottom:1px solid var(--line);
+}
+
+.chosen-row:last-child,
+.fave-row:last-child{
+  border-bottom:0;
+}
+
+.chosen-title,
+.fave-title{
+  font-size:14px;
+  font-weight:600;
+  color:var(--ink);
+  line-height:1.4;
+  word-break:break-word;
+}
+
+.chosen-remove,
+.fave-toggle,
+.fave-addrem{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink-muted);
+  border-radius:8px;
+  padding:4px 8px;
+  font-size:13px;
+  line-height:1.2;
+  cursor:pointer;
+}
+
+.chosen-remove:hover,
+.fave-toggle:hover,
+.fave-addrem:hover{
+  border-color:var(--brand);
+  color:var(--brand);
+  background:color-mix(in oklab, var(--brand) 8%, transparent);
+}
+
+/* tiny layout inside fave rows */
+.fave-actions{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  text-align:right;
+}
+
+.hint-row{
+  padding:8px 10px;
+  font-size:13px;
+  color:var(--ink-muted);
+}
+
+/* Make the little star button look tighter */
+.fave-toggle{
+  font-weight:700;
+  min-width:2.25em;
+  text-align:center;
+  padding:3px 6px;
+}
+
+/* Add/Remove button from favourites should reflect main button sizing */
+.fave-addrem{
+  min-width:4.5em;
+  text-align:center;
+}
+
+/* OPTIONAL small header tweaks inside the left column where we added 'Selected'/'Favourites' */
+.layout section > h2{
+  font-size:14px;
+  line-height:1.3;
+  font-weight:600;
+  color:var(--ink-muted);
+  margin:0 0 4px;
 }
