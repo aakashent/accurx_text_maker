@@ -1,4 +1,4 @@
-<!-- v1.5.0 (adds Selected + Favourites panels, keeps layout) -->
+<!-- v1.5.0 (2025-10-27) Accurx Text Maker -->
 <!doctype html>
 <html lang="en-GB">
 <head>
@@ -16,6 +16,7 @@
       <select id="category">
         <option value="">All categories</option>
       </select>
+
       <span id="counter" aria-live="polite">0/3 selected</span>
 
       <label class="toggle" title="Show deleted items">
@@ -39,25 +40,22 @@
       </div>
     </div>
 
-    <!-- Always-present diagnostics line -->
+    <!-- diagnostics -->
     <div id="diag" style="color:#888;font-size:12px;margin-top:4px"></div>
   </header>
 
   <main class="container layout">
     <section>
-      <!-- NEW: summary of currently selected leaflets with remove buttons -->
-      <h2 style="font-size:14px;margin:0 0 4px;">Selected</h2>
+      <h2>Selected</h2>
       <ul id="selectedSummary" class="summary-list" aria-label="Currently selected leaflets">
-        <!-- Script fills this -->
+        <!-- script fills -->
       </ul>
 
-      <!-- NEW: favourites block with star + quick add/remove -->
-      <h2 style="font-size:14px;margin:12px 0 4px;">Favourites</h2>
+      <h2>Favourites</h2>
       <ul id="faveSummary" class="summary-list" aria-label="Favourite leaflets">
-        <!-- Script fills this -->
+        <!-- script fills -->
       </ul>
 
-      <!-- Original list of all templates / leaflets -->
       <ul id="list" class="card-list" aria-label="Templates"></ul>
     </section>
 
