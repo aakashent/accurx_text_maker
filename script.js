@@ -1,388 +1,644 @@
-/*
-Accurx Text Maker
-v2.0
-
-Fixes:
-- You can always remove selected links from the "Currently included" pills.
-- Adds favourites (★). Stored in localStorage.
-
-Assumptions about data files:
-- templates.json: [{ "name": "Ear infection template", "text": "Thanks for attending today..." }, ...]
-- links_titles.json: [
-    { "title": "Glue Ear (Glue ear in children)", "url": "https://...", "short": "Glue ear" },
-    { "title": "Tonsils and adenoids", "url": "https://...", "short": "Tonsils" },
-    ...
-  ]
+/* v1.5.0 – keep original layout/behaviour, add:
+   - selectedSummary panel (deselect without searching again)
+   - favourites with persistence + faveSummary panel
+   - NO visual redesign, NO layout change, NO change to category picker / menus / export / 3 item cap
 */
 
-/////////////////////////////
-// DOM refs
-/////////////////////////////
+const ENT_CATEGORIES = ["Otology","Rhinology","H&N","Paeds"];
 
-const templateSelectEl   = document.getElementById("templateSelect");
-const selectedListEl     = document.getElementById("selectedList");
-const searchBoxEl        = document.getElementById("searchBox");
-const favouritesListEl   = document.getElementById("favouritesList");
-const resultsListEl      = document.getElementById("resultsList");
-const messageOutputEl    = document.getElementById("messageOutput");
-const copyBtnEl          = document.getElementById("copyBtn");
+// STATE.selectedIds stays as before (array of template IDs currently chosen)
+// We'll also track favourites (urls) and expose helper renderers
+const STATE = {
+  templates: [],
+  filtered: [],
+  selectedIds: [],
+  deletedIds: new Set(),
+  favourites: [] // array of URL strings
+};
 
-/////////////////////////////
-// State
-/////////////////////////////
+const els = {
+  list:           document.getElementById('list'),
+  category:       document.getElementById('category'),
+  search:         document.getElementById('search'),
+  copyBtn:        document.getElementById('copyBtn'),
+  output:         document.getElementById('output'),
+  counter:        document.getElementById('counter'),
+  showDeleted:    document.getElementById('showDeleted'),
+  exportBtn:      document.getElementById('exportBtn'),
+  diag:           document.getElementById('diag'),
+  toast:          document.getElementById('toast'),
 
-let ALL_LEAFLETS = [];      // full leaflet library from links_titles.json
-let templates = [];         // [{name,text},...]
-let selectedLeaflets = [];  // [{title,url}, ...] current picks for this message
-let favourites = [];        // ["url1","url2",...] persisted
-
-/////////////////////////////
-// Init
-/////////////////////////////
+  // NEW: summary panels you add to the HTML in the left column
+  selectedSummary: document.getElementById('selectedSummary'),
+  faveSummary:     document.getElementById('faveSummary')
+};
 
 init();
 
-async function init() {
-  loadFavouritesFromStorage();
-
-  await Promise.all([loadLeaflets(), loadTemplates()]);
-
-  renderTemplateSelect();
-  renderSelected();
-  renderFavourites();
-  renderResults(); // initially empty until user types
-  updateMessageOutput(); // build output with intro if any
-
-  // wire events
-  searchBoxEl.addEventListener("input", handleSearchInput);
-  templateSelectEl.addEventListener("change", updateMessageOutput);
-  copyBtnEl.addEventListener("click", handleCopy);
-}
-
-/////////////////////////////
-// Data loading
-/////////////////////////////
-
-async function loadLeaflets() {
-  // same folder fetch
-  const res = await fetch("links_titles.json");
-  ALL_LEAFLETS = await res.json();
-
-  // optional: sort alphabetically
-  ALL_LEAFLETS.sort((a, b) => a.title.localeCompare(b.title));
-}
-
-async function loadTemplates() {
-  // same folder fetch
-  const res = await fetch("templates.json");
-  templates = await res.json();
-}
-
-/////////////////////////////
-// Favourites persistence
-/////////////////////////////
-
-function loadFavouritesFromStorage() {
-  try {
-    const raw = localStorage.getItem("accurx_favourites");
-    favourites = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(favourites)) favourites = [];
-  } catch (err) {
-    favourites = [];
+async function init(){
+  try{
+    loadFavouritesFromStorage(); // NEW: load favourites first
+    STATE.templates = await loadData();
+    els.diag && (els.diag.textContent = `Loaded ${STATE.templates.length} items`);
+  }catch(e){
+    showFatal(`Couldn’t load data – ${e.message}`);
+    return;
   }
+
+  // Fixed category dropdown options
+  ENT_CATEGORIES.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c;
+    o.textContent=c;
+    els.category.appendChild(o);
+  });
+
+  bindEvents();
+
+  // Default to list mode, then wire menus and category picker
+  document.body.classList.add('list-mode');
+  setupViewMenu();
+  setupThemeMenu();
+  setupCategoryPicker();
+
+  applyFilters();
+  renderSelectedSummary(); // NEW
+  renderFaveSummary();     // NEW
 }
 
-function saveFavouritesToStorage() {
-  localStorage.setItem("accurx_favourites", JSON.stringify(favourites));
+/* ---------- Data loading ---------- */
+async function loadData(){
+  // 1) templates.json – preferred (array of objects)
+  try{
+    const res = await fetch('/accurx_text_maker/templates.json?v=' + Date.now(), { cache:'no-store' });
+    if (res.ok){
+      const data = await res.json();
+      if (Array.isArray(data) && data.length){
+        return data.map((t,i)=>({
+          id: t.id || `item-${i}`,
+          url: t.url || t.link || '',
+          title: t.title || `Item ${i+1}`,
+          text: t.text || t.url || '',
+          categories: [ normaliseCat(t.category || t.categories) || inferCategoryENT(t.title||'', t.text||t.url||'') ]
+        }));
+      }
+    }
+  }catch{/* ignore and fall back */}
+
+  // 2) links_titles.json – map { "url": "Title", ... }
+  const res = await fetch('/accurx_text_maker/links_titles.json?v=' + Date.now(), { cache:'no-store' });
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    // { url: "Title" }
+    return Object.entries(data).map(([u, title], i) => ({
+      id: `item-${i}`,
+      url: u,
+      title: String(title || '').trim() || `Item ${i+1}`,
+      text: u, // so preview isn’t blank; copy will include URL
+      categories: [ inferCategoryENT(title, u) ]
+    }));
+  }
+
+  if (Array.isArray(data)) {
+    // Array of objects – be permissive
+    return data.map((t,i)=>toTemplate(t,i));
+  }
+
+  throw new Error('Unsupported JSON structure');
 }
 
-/////////////////////////////
-// Utility helpers
-/////////////////////////////
-
-function isSelected(url) {
-  return selectedLeaflets.some((l) => l.url === url);
+function toTemplate(t,i){
+  const title = t.title || t.name || t.label || t.heading || t.key || `Item ${i+1}`;
+  const url   = t.url || t.link || t.href || t.path || '';
+  const body  = t.text || t.body || t.content || t.linkText || url || '';
+  return {
+    id: t.id || `item-${i}`,
+    url, title, text: String(body),
+    categories: [ normaliseCat(t.category || t.categories) || inferCategoryENT(title, body || url) ]
+  };
 }
 
-function isFavourite(url) {
-  return favourites.includes(url);
+/* ---------- UI ---------- */
+function bindEvents(){
+  els.search.addEventListener('input', applyFilters);
+  els.category.addEventListener('change', applyFilters);
+  els.showDeleted.addEventListener('change', renderList);
+  els.copyBtn.addEventListener('click', copyOutput);
+  els.exportBtn.addEventListener('click', exportTemplatesJSON);
 }
 
-function getLeafletByUrl(url) {
-  return ALL_LEAFLETS.find((l) => l.url === url);
+function applyFilters(){
+  const q=(els.search.value||'').toLowerCase().trim();
+  const cat=els.category.value||'';
+  STATE.filtered = STATE.templates.filter(t=>{
+    const mt=!q || t.title.toLowerCase().includes(q) || (t.text||'').toLowerCase().includes(q);
+    const mc=!cat || normaliseCat(t.categories)===cat;
+    const nd=els.showDeleted.checked || !STATE.deletedIds.has(t.id);
+    return mt && mc && nd;
+  });
+  renderList();
 }
 
-function addLeaflet(leaflet) {
-  if (!isSelected(leaflet.url)) {
-    selectedLeaflets.push({
-      title: leaflet.title,
-      url: leaflet.url,
+function renderList(){
+  els.list.innerHTML = '';
+  const inListMode = document.body.classList.contains('list-mode');
+
+  if (!inListMode) {
+    // Cards view: flat
+    STATE.filtered.forEach(t => els.list.appendChild(makeCard(t)));
+  } else {
+    // List view: group by ENT order
+    const order = ["Otology","Rhinology","H&N","Paeds"];
+    const groups = new Map(order.map(c => [c, []]));
+    STATE.filtered.forEach(t => {
+      const c = normaliseCat(t.categories) || 'H&N';
+      if (!groups.has(c)) groups.set(c, []);
+      groups.get(c).push(t);
     });
-    renderSelected();
-    renderResults();
-    renderFavourites();
-    updateMessageOutput();
-  }
-}
-
-function removeLeaflet(url) {
-  selectedLeaflets = selectedLeaflets.filter((l) => l.url !== url);
-  renderSelected();
-  renderResults();
-  renderFavourites();
-  updateMessageOutput();
-}
-
-function toggleLeafletByUrl(url) {
-  const lf = getLeafletByUrl(url);
-  if (!lf) return;
-  if (isSelected(url)) {
-    removeLeaflet(url);
-  } else {
-    addLeaflet(lf);
-  }
-}
-
-function toggleFavourite(url) {
-  if (isFavourite(url)) {
-    favourites = favourites.filter((f) => f !== url);
-  } else {
-    favourites.push(url);
-  }
-  saveFavouritesToStorage();
-  renderFavourites();
-  renderResults();
-}
-
-/////////////////////////////
-// Build output message
-/////////////////////////////
-
-function updateMessageOutput() {
-  // intro based on chosen template
-  let introText = "";
-  const selectedTemplateIndex = templateSelectEl.value;
-  if (selectedTemplateIndex !== "" && templates[selectedTemplateIndex]) {
-    introText = templates[selectedTemplateIndex].text.trim();
-  }
-
-  const linkLines = selectedLeaflets.map(
-    (l) => `• ${l.title}: ${l.url}`
-  );
-
-  // Join with blank line between intro and links (if intro exists)
-  let finalMsg = "";
-  if (introText) {
-    finalMsg = introText + "\n\n" + linkLines.join("\n");
-  } else {
-    // basic fallback wording if you prefer
-    if (linkLines.length > 0) {
-      finalMsg =
-        "Here are the links we discussed today:\n\n" +
-        linkLines.join("\n");
-    } else {
-      finalMsg = ""; // nothing chosen yet
+    for (const cat of order) {
+      const items = groups.get(cat) || [];
+      if (!items.length) continue;
+      const h = document.createElement('li');
+      h.className = 'group-head';
+      h.textContent = cat;
+      els.list.appendChild(h);
+      items.forEach(t => els.list.appendChild(makeCard(t)));
     }
   }
 
-  messageOutputEl.value = finalMsg.trim();
+  // after rendering cards, update composer + summaries
+  updateComposer();
+  renderSelectedSummary();
+  renderFaveSummary();
 }
 
-/////////////////////////////
-// Rendering
-/////////////////////////////
+/* ---------- CARD BUILDER WITH NEW FAV + REMOVE SUPPORT ---------- */
+function makeCard(t){
+  const li = document.createElement('li'); 
+  li.className = 'card';
 
-function renderTemplateSelect() {
-  templateSelectEl.innerHTML = "";
+  const checked   = STATE.selectedIds.includes(t.id);
+  const disabled  = !checked && STATE.selectedIds.length >= 3;
+  const cat       = normaliseCat(t.categories) || 'H&N';
+  const isFaved   = isFave(t.url); // NEW
 
-  // default blank
-  const optBlank = document.createElement("option");
-  optBlank.value = "";
-  optBlank.textContent = "No intro / blank message";
-  templateSelectEl.appendChild(optBlank);
+  li.innerHTML = `
+    <div class="card-inner">
+      <div class="card-head">
+        <input type="checkbox" class="selbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
+        <button class="faveBtn" data-url="${t.url}" title="Favourite">
+          ${isFaved ? '★' : '☆'}
+        </button>
+      </div>
+      <div class="meta">
+        <h3>${escapeHTML(t.title||'')}</h3>
+        <div class="tags">
+          <span class="tag tag--${cat}" data-cat="${cat}" data-id="${t.id}" role="button" tabindex="0" title="Click to change category">${cat}</span>
+        </div>
+        <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
+      </div>
+      <div class="card-actions">
+        <a class="icon-btn" href="${t.url||'#'}" target="_blank" rel="noopener">Open</a>
+        <button class="icon-btn delBtn" data-id="${t.id}">
+          ${STATE.deletedIds.has(t.id)?'Undo':'Delete'}
+        </button>
+      </div>
+    </div>`;
 
-  templates.forEach((t, idx) => {
-    const opt = document.createElement("option");
-    opt.value = idx;
-    opt.textContent = t.name;
-    templateSelectEl.appendChild(opt);
+  // checkbox behaviour (same logic as before, but we centralise updates so summaries/composer stay in sync)
+  li.querySelector('.selbox').addEventListener('change', e=>{
+    const id = e.target.value;
+    if (e.target.checked){
+      if (!STATE.selectedIds.includes(id)){
+        STATE.selectedIds.push(id);
+      }
+    } else {
+      STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
+    }
+    renderList(); // rerender to refresh disabled states, counters, summaries
   });
+
+  // delete / undelete
+  li.querySelector('.delBtn').addEventListener('click', ()=>{
+    if (STATE.deletedIds.has(t.id)){
+      STATE.deletedIds.delete(t.id);
+      toast('Restored');
+    } else {
+      STATE.deletedIds.add(t.id);
+      toast('Deleted');
+      // Also if it was selected, remove from selection (keeps things consistent)
+      STATE.selectedIds = STATE.selectedIds.filter(x => x !== t.id);
+    }
+    applyFilters(); // re-filter + rerender
+  });
+
+  // favourite toggle
+  li.querySelector('.faveBtn').addEventListener('click', ()=>{
+    toggleFave(t.url);
+    renderList(); // refresh stars and favourite summary
+  });
+
+  return li;
 }
 
-function renderSelected() {
-  selectedListEl.innerHTML = "";
+/* ---------- Composer text on the right ---------- */
+function updateComposer(){
+  const chosen = STATE.selectedIds
+    .map(id => STATE.templates.find(t => t.id === id))
+    .filter(Boolean);
 
-  if (selectedLeaflets.length === 0) {
-    selectedListEl.innerHTML =
-      `<div class="empty-hint">Nothing selected yet.</div>`;
+  if (chosen.length) {
+    const plural = chosen.length > 1 ? 'leaflets' : 'leaflet';
+    const lines = chosen.map(t => `${t.title}:\n${t.url}`);
+    els.output.value = `Please see the below ${plural}:\n` + lines.join('\n\n');
+  } else {
+    els.output.value = '';
+  }
+
+  els.copyBtn.disabled = !chosen.length;
+  els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
+}
+
+/* ---------- NEW: Selected summary panel ---------- */
+/* Shows the currently chosen items and lets you remove them directly,
+   without having to re-find them in the filtered list.
+*/
+function renderSelectedSummary(){
+  if (!els.selectedSummary) return;
+
+  // Build list from current STATE.selectedIds
+  const chosen = STATE.selectedIds
+    .map(id => STATE.templates.find(t => t.id === id))
+    .filter(Boolean);
+
+  if (!chosen.length){
+    els.selectedSummary.innerHTML = `<li class="hint-row">No leaflets selected.</li>`;
     return;
   }
 
-  selectedLeaflets.forEach((leaflet) => {
-    const pill = document.createElement("div");
-    pill.className = "selected-pill";
-
-    pill.innerHTML = `
-      <span class="pill-text">${leaflet.title}</span>
-      <button class="pill-remove" data-url="${leaflet.url}" aria-label="Remove ${leaflet.title}">
-        ❌
-      </button>
-    `;
-
-    selectedListEl.appendChild(pill);
-  });
+  els.selectedSummary.innerHTML = chosen.map(t => `
+    <li class="chosen-row">
+      <span class="chosen-title">${escapeHTML(t.title||'')}</span>
+      <button class="chosen-remove" data-id="${t.id}" title="Remove">✕</button>
+    </li>
+  `).join('');
 
   // hook up remove buttons
-  selectedListEl.querySelectorAll(".pill-remove").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const url = e.currentTarget.getAttribute("data-url");
-      removeLeaflet(url);
+  els.selectedSummary.querySelectorAll('.chosen-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-id');
+      STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
+      // after removal, rerender everything (disables checkboxes etc.)
+      renderList();
     });
   });
 }
 
-function renderFavourites() {
-  favouritesListEl.innerHTML = "";
+/* ---------- FAVOURITES ---------- */
+/* We favourite by URL, not by ID, because your IDs are generated and may shift
+   if templates.json is rebuilt. URLs should be relatively stable.
+*/
 
-  if (favourites.length === 0) {
-    favouritesListEl.innerHTML =
-      `<div class="empty-hint">No favourites yet. Tap ☆ to save one.</div>`;
-    return;
+function loadFavouritesFromStorage(){
+  try{
+    const raw = localStorage.getItem('accurx_faves');
+    const arr = raw ? JSON.parse(raw) : [];
+    STATE.favourites = Array.isArray(arr) ? arr : [];
+  }catch(e){
+    STATE.favourites = [];
   }
-
-  favourites
-    .map((url) => getLeafletByUrl(url))
-    .filter(Boolean)
-    .forEach((l) => {
-      const row = document.createElement("div");
-      row.className = "leaflet-row favourite-row";
-
-      row.innerHTML = `
-        <div class="leaflet-main">
-          <div class="leaflet-title">${l.title}</div>
-          <div class="leaflet-url">${l.url}</div>
-        </div>
-        <div class="leaflet-actions">
-          <button class="btn-addremove js-toggle-add" data-url="${l.url}">
-            ${isSelected(l.url) ? "Remove" : "Add"}
-          </button>
-          <button class="btn-fav js-toggle-fav" data-url="${l.url}" aria-label="Unfavourite ${l.title}">
-            ★
-          </button>
-        </div>
-      `;
-
-      favouritesListEl.appendChild(row);
-    });
-
-  attachRowHandlers(favouritesListEl);
 }
 
-function renderResults() {
-  const query = searchBoxEl.value || "";
-  const trimmed = query.toLowerCase().trim();
-
-  resultsListEl.innerHTML = "";
-
-  if (!trimmed) {
-    resultsListEl.innerHTML =
-      `<div class="empty-hint">Start typing to search…</div>`;
-    return;
-  }
-
-  const filtered = ALL_LEAFLETS.filter((l) => {
-    const hay =
-      (l.title || "") +
-      " " +
-      (l.short || "") +
-      " " +
-      (l.url || "");
-    return hay.toLowerCase().includes(trimmed);
-  });
-
-  if (filtered.length === 0) {
-    resultsListEl.innerHTML =
-      `<div class="empty-hint">No matches.</div>`;
-    return;
-  }
-
-  filtered.forEach((l) => {
-    const row = document.createElement("div");
-    row.className = "leaflet-row";
-
-    row.innerHTML = `
-      <div class="leaflet-main">
-        <div class="leaflet-title">${l.title}</div>
-        <div class="leaflet-url">${l.url}</div>
-      </div>
-      <div class="leaflet-actions">
-        <button class="btn-addremove js-toggle-add" data-url="${l.url}">
-          ${isSelected(l.url) ? "Remove" : "Add"}
-        </button>
-        <button class="btn-fav js-toggle-fav" data-url="${l.url}" aria-label="Favourite ${l.title}">
-          ${isFavourite(l.url) ? "★" : "☆"}
-        </button>
-      </div>
-    `;
-
-    resultsListEl.appendChild(row);
-  });
-
-  attachRowHandlers(resultsListEl);
+function saveFavouritesToStorage(){
+  localStorage.setItem('accurx_faves', JSON.stringify(STATE.favourites));
 }
 
-function attachRowHandlers(containerEl) {
-  // Add/Remove (Add leaflet to selection OR remove)
-  containerEl.querySelectorAll(".js-toggle-add").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const url = e.currentTarget.getAttribute("data-url");
-      toggleLeafletByUrl(url);
-    });
-  });
-
-  // Favourite toggle
-  containerEl.querySelectorAll(".js-toggle-fav").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const url = e.currentTarget.getAttribute("data-url");
-      toggleFavourite(url);
-    });
-  });
+function isFave(url){
+  return STATE.favourites.includes(url);
 }
 
-/////////////////////////////
-// Events
-/////////////////////////////
-
-function handleSearchInput() {
-  renderResults();
-}
-
-function handleCopy() {
-  // iOS-safe copy approach
-  messageOutputEl.select();
-  messageOutputEl.setSelectionRange(0, 99999); // iOS
-
-  let copied = false;
-
-  try {
-    copied = document.execCommand("copy");
-  } catch (_) {
-    copied = false;
-  }
-
-  if (!copied && navigator.clipboard) {
-    navigator.clipboard.writeText(messageOutputEl.value).then(() => {
-      flashCopied();
-    });
+function toggleFave(url){
+  if (!url) return;
+  if (isFave(url)){
+    STATE.favourites = STATE.favourites.filter(u => u !== url);
   } else {
-    flashCopied();
+    STATE.favourites.push(url);
+  }
+  saveFavouritesToStorage();
+}
+
+/* faveSummary = list of favourites with:
+   - star button (to unstar)
+   - add/remove button to toggle in/out of STATE.selectedIds
+*/
+function renderFaveSummary(){
+  if (!els.faveSummary) return;
+
+  if (!STATE.favourites.length){
+    els.faveSummary.innerHTML = `<li class="hint-row">No favourites yet. Tap ☆ to add one.</li>`;
+    return;
+  }
+
+  // Map favourite URLs back to template objects
+  const favObjs = STATE.favourites
+    .map(u => STATE.templates.find(t => t.url === u))
+    .filter(Boolean)
+    .sort((a,b)=>a.title.localeCompare(b.title));
+
+  if (!favObjs.length){
+    els.faveSummary.innerHTML = `<li class="hint-row">No favourites yet. Tap ☆ to add one.</li>`;
+    return;
+  }
+
+  els.faveSummary.innerHTML = favObjs.map(t => `
+    <li class="fave-row">
+      <div class="fave-main">
+        <span class="fave-title">${escapeHTML(t.title||'')}</span>
+      </div>
+      <div class="fave-actions">
+        <button class="fave-toggle" data-url="${t.url}" title="Favourite">
+          ★
+        </button>
+        <button class="fave-addrem" data-id="${t.id}" title="Add / Remove">
+          ${STATE.selectedIds.includes(t.id) ? 'Remove' : 'Add'}
+        </button>
+      </div>
+    </li>
+  `).join('');
+
+  // hook up fave toggle (★)
+  els.faveSummary.querySelectorAll('.fave-toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const url = btn.getAttribute('data-url');
+      toggleFave(url);
+      renderList(); // refresh everything, including faveSummary itself
+    });
+  });
+
+  // hook up Add/Remove
+  els.faveSummary.querySelectorAll('.fave-addrem').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-id');
+      toggleSelectedById(id);
+      renderList();
+    });
+  });
+}
+
+/* Toggle selection by ID (used in favourites Add/Remove button) */
+function toggleSelectedById(id){
+  if (STATE.selectedIds.includes(id)){
+    STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
+  } else {
+    // respect the 3-item cap
+    if (STATE.selectedIds.length < 3){
+      STATE.selectedIds.push(id);
+    } else {
+      toast('Limit is 3 leaflets');
+    }
   }
 }
 
-function flashCopied() {
-  const originalText = copyBtnEl.textContent;
-  copyBtnEl.textContent = "Copied!";
-  setTimeout(() => {
-    copyBtnEl.textContent = originalText;
-  }, 1500);
+/* ---------- Actions ---------- */
+async function copyOutput(){
+  try{
+    await navigator.clipboard.writeText(els.output.value);
+    toast('Copied to clipboard');
+  }
+  catch{
+    els.output.select();
+    document.execCommand('copy');
+    toast('Copied');
+  }
+}
+
+function exportTemplatesJSON(){
+  const exportData = STATE.templates
+    .filter(t=>!STATE.deletedIds.has(t.id))
+    .map(t=>({
+      url: t.url || '',
+      title: t.title || '',
+      category: normaliseCat(t.categories) || inferCategoryENT(t.title||'', t.text||t.url||'')
+    }));
+  const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='templates.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast('Downloaded templates.json');
+}
+
+/* ---------- View & Theme menus (anchored under their buttons) ---------- */
+function setupViewMenu(){
+  const btn  = document.getElementById('viewBtn');
+  const menu = document.getElementById('viewMenu');
+  if (!btn || !menu) return;
+
+  // Anchor the menu under the button
+  if (!btn.parentElement.classList.contains('menu-anchor')) {
+    const wrap = document.createElement('span');
+    wrap.className = 'menu-anchor';
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+  }
+  menu.classList.add('menu--below');
+  menu.hidden = true;
+
+  const apply = (mode) => {
+    document.body.classList.toggle('list-mode', mode === 'list');
+    localStorage.setItem('xview', mode);
+    btn.textContent = `View: ${mode === 'list' ? 'List' : 'Cards'}`;
+    applyFilters();
+  };
+
+  // Restore saved (default list)
+  apply(localStorage.getItem('xview') || 'list');
+
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const willOpen = menu.hidden;
+    document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+    menu.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
+  });
+
+  menu.addEventListener('click', (e)=>{
+    const choice = e.target.closest('button')?.dataset.view;
+    if (!choice) return;
+    apply(choice);
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded','false');
+  });
+
+  document.addEventListener('click', ()=>{
+    if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded','false'); }
+  });
+}
+
+function setupThemeMenu(){
+  const btn  = document.getElementById('themeBtn');
+  const menu = document.getElementById('themeMenu');
+  if (!btn || !menu) return;
+
+  if (!btn.parentElement.classList.contains('menu-anchor')) {
+    const wrap = document.createElement('span');
+    wrap.className = 'menu-anchor';
+    btn.parentNode.insertBefore(wrap, btn);
+    wrap.appendChild(btn);
+    wrap.appendChild(menu);
+  }
+  menu.classList.add('menu--below');
+  menu.hidden = true;
+
+  const KEY = 'xtheme';
+  const apply = (mode) => {
+    if (mode === 'system'){
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.dataset.theme = mode;
+    }
+    localStorage.setItem(KEY, mode);
+    btn.textContent = `Theme: ${mode[0].toUpperCase()+mode.slice(1)}`;
+  };
+  apply(localStorage.getItem(KEY) || 'system');
+
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const willOpen = menu.hidden;
+    document.querySelectorAll('.menu').forEach(m => m.hidden = true);
+    menu.hidden = !willOpen;
+    btn.setAttribute('aria-expanded', String(willOpen));
+  });
+
+  menu.addEventListener('click', (e)=>{
+    const val = e.target.closest('button')?.dataset.theme;
+    if (!val) return;
+    apply(val);
+    menu.hidden = true;
+    btn.setAttribute('aria-expanded','false');
+  });
+
+  document.addEventListener('click', ()=>{
+    if (!menu.hidden) { menu.hidden = true; btn.setAttribute('aria-expanded','false'); }
+  });
+}
+
+/* ---------- Category picker (chip click to open mini menu) ---------- */
+function setupCategoryPicker(){
+  // Build once
+  let menu = document.getElementById('catMenu');
+  if (!menu){
+    menu = document.createElement('div');
+    menu.id = 'catMenu';
+    menu.className = 'menu';
+    menu.hidden = true;
+    menu.innerHTML = ENT_CATEGORIES
+      .map(c => `<button type="button" data-cat="${c}">${c}</button>`)
+      .join('');
+    document.body.appendChild(menu);
+
+    // Choose a category
+    menu.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button'); 
+      if (!btn) return;
+      const id  = menu.dataset.targetId;
+      const item = STATE.templates.find(t => t.id === id);
+      if (item){ item.categories = [btn.dataset.cat]; }
+      menu.hidden = true;
+      applyFilters();
+    });
+  }
+
+  // Open on chip click
+  els.list.addEventListener('click', (e)=>{
+    const tag = e.target.closest('.tag[data-id]');
+    if (!tag) return;
+    e.stopPropagation();
+    openCatMenu(tag, menu);
+  });
+
+  // Keyboard activation
+  els.list.addEventListener('keydown', (e)=>{
+    const tag = e.target.closest('.tag[data-id]');
+    if (!tag) return;
+    if (e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      openCatMenu(tag, menu);
+    }
+  });
+
+  // Close on outside click
+  document.addEventListener('click', ()=>{ menu.hidden = true; });
+}
+
+function openCatMenu(tag, menu){
+  menu.dataset.targetId = tag.dataset.id;
+  // Pre-highlight current
+  const current = tag.dataset.cat;
+  menu.querySelectorAll('button').forEach(b => {
+    b.style.fontWeight = (b.dataset.cat === current ? '700' : '400');
+  });
+  // Place under the tag
+  const r = tag.getBoundingClientRect();
+  menu.style.left = r.left + 'px';
+  menu.style.top  = (r.bottom + 4 + window.scrollY) + 'px';
+  menu.hidden = false;
+}
+
+/* ---------- Helpers ---------- */
+function snippet(text,max=160){
+  const s=(text||'').replace(/\s+/g,' ').trim();
+  return s.length>max? s.slice(0,max-1)+'…':s;
+}
+
+function escapeHTML(s){
+  return (s||'').replace(/[&<>"']/g,m=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+
+function toast(msg){
+  if (!els.toast) return;
+  els.toast.textContent=msg;
+  els.toast.className='show';
+  setTimeout(()=>{ els.toast.className=''; },1600);
+}
+
+function showFatal(msg){
+  els.list.innerHTML=`<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
+  els.diag && (els.diag.textContent = msg);
+}
+
+// ENT-only inference with Paeds override
+function inferCategoryENT(title, body){
+  const t=`${title} ${body}`.toLowerCase();
+  const has = kws => kws.some(k => t.includes(k));
+  // Paeds override
+  if (has(['paediatric','paediatrics','paeds','child','children','toddler','infant','neonate','school-age','young person','your child'])) return 'Paeds';
+  // Otology (ear + balance)
+  if (has(['ear','pinna','hearing','deafness','tinnitus','vertigo','otic','otosclerosis','otitis','eardrum','tympanic','mastoid','cholesteatoma','earwax','grommet','meniere','bppv','labyrinthitis','cawthorne-cooksey'])) return 'Otology';
+  // Rhinology (nose & sinuses)
+  if (has(['nose','nasal','sinus','sinuses','rhino','rhinitis','sinusitis','septum','septal','polyps','epistaxis','smell','olfactory','turbinates','rhinoplasty','nasal irrigation','nasal sprays','nasal drops','nasal ointment'])) return 'Rhinology';
+  // Head & Neck
+  if (has(['head and neck','larynx','laryngeal','voice','hoarseness','thyroid','parotid','salivary','gland','neck','tonsillectomy','microlaryngoscopy','oesophagoscopy','pharyngoscopy','hpv','cancer','facial skin lesions','thyroglossal','neck lump','submandibular'])) return 'H&N';
+  // Default
+  return 'H&N';
+}
+
+function normaliseCat(cats){
+  if (!cats) return '';
+  const s = Array.isArray(cats) ? (cats[0]||'') : cats;
+  const v = String(s).toLowerCase().replace(/\s*&\s*/,'&').trim();
+  if(/^oto/.test(v) || v==='ear') return 'Otology';
+  if(/^rhin/.test(v) || ['nose','sinus','sinuses'].includes(v)) return 'Rhinology';
+  if(v==='h&n' || /head|neck/.test(v)) return 'H&N';
+  if(/^paed/.test(v) || /child/.test(v)) return 'Paeds';
+  // If it’s already a valid label
+  if (ENT_CATEGORIES.includes(s)) return s;
+  return '';
 }
