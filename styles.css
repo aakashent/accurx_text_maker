@@ -1,4 +1,4 @@
-/* v1.2.1 (2025-08-09) Accurx Text Maker – refined clinical theme */
+/* v1.5.0 (2025-10-27) Accurx Text Maker theme + summary panels */
 :root{
   --bg:#ffffff; --ink:#1f2328; --ink-muted:#5d6670; --line:#e9eef2;
   --brand:#2b7a78; --brand-ink:#ffffff; --chip:#f4f8f7;
@@ -9,7 +9,8 @@
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#0f1115; --ink:#e8e8e8; --ink-muted:#9aa3ad; --line:#23262c;
-    --brand:#79d3ca; --brand-ink:#091012; --chip:#162022; --shadow:none; --focus:#3391ff;
+    --brand:#79d3ca; --brand-ink:#091012; --chip:#162022;
+    --shadow:none; --focus:#3391ff;
   }
 }
 *{box-sizing:border-box}
@@ -48,9 +49,12 @@ h2{margin:0 0 4px;font-size:18px}
 @media (max-width:960px){.layout{grid-template-columns:1fr}}
 
 /* Cards list */
-.card-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.card-list{
+  list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px
+}
 
-/* Card with a subtle abstract waveform motif */
+/* Card (leaflet entry) */
 .card{
   position:relative;
   border:1px solid var(--line);
@@ -68,12 +72,19 @@ h2{margin:0 0 4px;font-size:18px}
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='120' viewBox='0 0 320 120'><path d='M0,70 C40,40 80,100 120,70 160,40 200,100 240,70 280,40 320,90 360,60' fill='none' stroke='rgba(0,0,0,0.06)' stroke-width='3'/></svg>") center/cover no-repeat;
 }
 
-.card-inner{display:flex;gap:12px;padding:12px;cursor:pointer;align-items:flex-start}
+.card-inner{
+  display:flex;gap:12px;padding:12px;cursor:pointer;
+  align-items:flex-start
+}
 .card input{margin-top:4px;transform:scale(1.1)}
-.card-actions{margin-left:auto;display:flex;gap:8px;align-self:flex-start}
+.card-actions{
+  margin-left:auto;display:flex;gap:8px;align-self:flex-start
+}
 .icon-btn{
   border:1px solid var(--line);background:transparent;color:var(--ink-muted);
-  padding:4px 8px;border-radius:8px;cursor:pointer
+  padding:4px 8px;border-radius:8px;cursor:pointer;
+  text-decoration:none;
+  font-size:13px;line-height:1.2;
 }
 .icon-btn:hover{border-color:var(--brand);color:var(--brand)}
 
@@ -88,7 +99,7 @@ h2{margin:0 0 4px;font-size:18px}
   font-family:var(--mono);font-size:13px
 }
 
-/* Composer */
+/* Composer (right column) */
 .composer{
   display:flex;flex-direction:column;gap:10px;
   border:1px solid var(--line);border-radius:var(--radius);
@@ -127,7 +138,7 @@ textarea{
 }
 #toast.show{opacity:1}
 
-/* List view (denser, faster scanning) */
+/* List view (denser mode) */
 .list-mode .card-list{grid-template-columns:1fr}
 .list-mode .card{box-shadow:none}
 .list-mode .card-inner{
@@ -135,20 +146,21 @@ textarea{
   display:grid; grid-template-columns:auto 1fr auto; align-items:center;
 }
 .list-mode .meta h3{margin:0; font-size:15px}
-.list-mode .snippet{display:none} /* hide long body in list view */
+.list-mode .snippet{display:none}
 .list-mode .tag{font-size:11px; padding:1px 6px}
 .list-mode .icon-btn{padding:2px 6px}
 
-/* Group headers (only used in list view) */
+/* Group headers (list view only) */
 .list-mode .group-head{
   padding:8px 10px; margin:8px 0 4px; font-weight:700; color:var(--ink-muted);
   border-bottom:1px solid var(--line);
 }
 
-/* Manual theme override wins (button controls this) */
+/* Manual theme override wins */
 :root[data-theme="dark"]{
   --bg:#0f1115; --ink:#e8e8e8; --ink-muted:#9aa3ad; --line:#23262c;
-  --brand:#79d3ca; --brand-ink:#091012; --chip:#162022; --shadow:none; --focus:#3391ff;
+  --brand:#79d3ca; --brand-ink:#091012; --chip:#162022;
+  --shadow:none; --focus:#3391ff;
 }
 :root[data-theme="light"]{
   --bg:#ffffff; --ink:#1f2328; --ink-muted:#5d6670; --line:#e9eef2;
@@ -156,7 +168,7 @@ textarea{
   --shadow:0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
 }
 
-/* Simple popover menus */
+/* Popover menus */
 .menu{
   position:absolute; z-index:30; margin-top:8px;
   border:1px solid var(--line); border-radius:10px;
@@ -179,12 +191,12 @@ textarea{
   margin-top:4px; z-index:1000
 }
 
-/* Category colours (chips) */
+/* Category chip colours */
 :root{
-  --cat-otology:#4c8bf5;   /* blue */
-  --cat-rhinology:#2bb673; /* green */
-  --cat-hn:#f59f00;        /* amber */
-  --cat-paeds:#c678dd;     /* purple */
+  --cat-otology:#4c8bf5;
+  --cat-rhinology:#2bb673;
+  --cat-hn:#f59f00;
+  --cat-paeds:#c678dd;
 }
 .tag--Otology{
   background:color-mix(in oklab, var(--cat-otology) 14%, var(--chip));
@@ -203,24 +215,13 @@ textarea{
   border-color: color-mix(in oklab, var(--cat-paeds) 40%, var(--line));
 }
 
-/* View menu helper (not strictly required once we use .menu-anchor/.menu--below) */
-.menu--view {
-  position: absolute;
-  top: 100%; /* directly below the button */
-  left: 0;
-  margin-top: 4px;
-  z-index: 1000;
-}
-
-/* Accessibility */
+/* Accessibility focus ring */
 :focus-visible{
   outline:none;
   box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 25%, transparent)
 }
 
-/* -------------------------------------- */
-/* NEW: summary lists (Selected / Favourites) */
-/* -------------------------------------- */
+/* --- NEW: summary lists (Selected / Favourites) --- */
 
 .summary-list{
   list-style:none;
@@ -235,12 +236,8 @@ textarea{
   font-size:14px;
   line-height:1.4;
 }
+.summary-list:empty{display:none;}
 
-.summary-list:empty{
-  display:none;
-}
-
-/* Individual rows inside summary lists */
 .chosen-row,
 .fave-row{
   display:flex;
@@ -250,7 +247,6 @@ textarea{
   padding:8px 10px;
   border-bottom:1px solid var(--line);
 }
-
 .chosen-row:last-child,
 .fave-row:last-child{
   border-bottom:0;
@@ -265,9 +261,8 @@ textarea{
   word-break:break-word;
 }
 
-.chosen-remove,
-.fave-toggle,
-.fave-addrem{
+/* Selected panel remove (✕) */
+.chosen-remove{
   border:1px solid var(--line);
   background:transparent;
   color:var(--ink-muted);
@@ -277,44 +272,57 @@ textarea{
   line-height:1.2;
   cursor:pointer;
 }
-
-.chosen-remove:hover,
-.fave-toggle:hover,
-.fave-addrem:hover{
+.chosen-remove:hover{
   border-color:var(--brand);
   color:var(--brand);
   background:color-mix(in oklab, var(--brand) 8%, transparent);
 }
 
-/* tiny layout inside fave rows */
-.fave-actions{
+/* Favourites row actions: Open + ★ + [ ] */
+.fave-actions-row{
   display:flex;
-  flex-direction:column;
-  gap:4px;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
   text-align:right;
 }
 
+/* star */
+.fave-toggle{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--ink-muted);
+  border-radius:8px;
+  padding:4px 8px;
+  font-size:13px;
+  line-height:1.2;
+  cursor:pointer;
+  font-weight:700;
+  min-width:2.25em;
+  text-align:center;
+}
+.fave-toggle:hover{
+  border-color:var(--brand);
+  color:var(--brand);
+  background:color-mix(in oklab, var(--brand) 8%, transparent);
+}
+
+/* checkbox for include/exclude */
+.fave-check{
+  width:18px;
+  height:18px;
+  accent-color:var(--brand);
+  cursor:pointer;
+}
+
+/* hint row for empty states */
 .hint-row{
   padding:8px 10px;
   font-size:13px;
   color:var(--ink-muted);
 }
 
-/* Make the little star button look tighter */
-.fave-toggle{
-  font-weight:700;
-  min-width:2.25em;
-  text-align:center;
-  padding:3px 6px;
-}
-
-/* Add/Remove button from favourites should reflect main button sizing */
-.fave-addrem{
-  min-width:4.5em;
-  text-align:center;
-}
-
-/* OPTIONAL small header tweaks inside the left column where we added 'Selected'/'Favourites' */
+/* make the small h2s in left column look like subheads */
 .layout section > h2{
   font-size:14px;
   line-height:1.3;
