@@ -1,114 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
+<!-- v1.5.0 (adds Selected + Favourites panels, keeps layout) -->
+<!doctype html>
+<html lang="en-GB">
 <head>
-  <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1"
-  />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Accurx Text Maker</title>
-
   <link rel="stylesheet" href="styles.css" />
+  <base href="/accurx_text_maker/">
 </head>
-
 <body>
-  <header>
+  <header class="container">
     <h1>Accurx Text Maker</h1>
-    <small>
-      Pick the leaflets you want to send. You can remove them later and save
-      favourites for next time.
-    </small>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search titles/text…" />
+      <select id="category">
+        <option value="">All categories</option>
+      </select>
+      <span id="counter" aria-live="polite">0/3 selected</span>
+
+      <label class="toggle" title="Show deleted items">
+        <input type="checkbox" id="showDeleted" />
+        <span>Show deleted</span>
+      </label>
+
+      <button id="exportBtn" class="btn btn-ghost" title="Download templates.json">Export</button>
+
+      <button id="viewBtn" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false">View</button>
+      <div id="viewMenu" class="menu" hidden>
+        <button type="button" data-view="list">List (default)</button>
+        <button type="button" data-view="cards">Cards</button>
+      </div>
+
+      <button id="themeBtn" class="btn btn-ghost" aria-haspopup="menu" aria-expanded="false">Theme</button>
+      <div id="themeMenu" class="menu" hidden>
+        <button type="button" data-theme="system">System</button>
+        <button type="button" data-theme="light">Light</button>
+        <button type="button" data-theme="dark">Dark</button>
+      </div>
+    </div>
+
+    <!-- Always-present diagnostics line -->
+    <div id="diag" style="color:#888;font-size:12px;margin-top:4px"></div>
   </header>
 
-  <!-- Template block -->
-  <section id="templateSection">
-    <h2>
-      <span class="header-line">
-        <span>Template intro</span>
-      </span>
-    </h2>
+  <main class="container layout">
+    <section>
+      <!-- NEW: summary of currently selected leaflets with remove buttons -->
+      <h2 style="font-size:14px;margin:0 0 4px;">Selected</h2>
+      <ul id="selectedSummary" class="summary-list" aria-label="Currently selected leaflets">
+        <!-- Script fills this -->
+      </ul>
 
-    <label for="templateSelect">Choose opening text</label>
-    <select id="templateSelect"></select>
-    <div class="helper">This text will appear at the top of the final message.</div>
-  </section>
+      <!-- NEW: favourites block with star + quick add/remove -->
+      <h2 style="font-size:14px;margin:12px 0 4px;">Favourites</h2>
+      <ul id="faveSummary" class="summary-list" aria-label="Favourite leaflets">
+        <!-- Script fills this -->
+      </ul>
 
-  <!-- Currently selected -->
-  <section id="selectedSection">
-    <h2>
-      <span class="header-line">
-        <span>Currently included</span>
-        <small class="subhead-hint">
-          Tap ❌ to remove
-        </small>
-      </span>
-    </h2>
+      <!-- Original list of all templates / leaflets -->
+      <ul id="list" class="card-list" aria-label="Templates"></ul>
+    </section>
 
-    <div id="selectedList" class="selected-list">
-      <!-- Pills go here -->
-    </div>
-  </section>
+    <section class="composer">
+      <div class="composer-head">
+        <h2>Preview</h2>
+        <button id="copyBtn" class="btn" disabled>Copy text</button>
+      </div>
+      <textarea
+        id="output"
+        rows="14"
+        readonly
+        placeholder="Select up to 3 templates…"></textarea>
+      <p class="hint">
+        Selected items are concatenated in the order you tick them. Max 3.
+      </p>
+    </section>
+  </main>
 
-  <!-- Search -->
-  <section id="searchSection">
-    <h2>
-      <span class="header-line">
-        <span>Search leaflets</span>
-      </span>
-    </h2>
-
-    <label for="searchBox">Search by name / topic</label>
-    <input id="searchBox" type="text" placeholder="e.g. Glue ear, tonsils, nosebleeds" autocomplete="off" />
-    <div class="helper">Start typing to see matches.</div>
-  </section>
-
-  <!-- Favourites -->
-  <section id="favouritesSection">
-    <h2>
-      <span class="header-line">
-        <span>Favourites ★</span>
-        <small class="subhead-hint">
-          Your most-used links
-        </small>
-      </span>
-    </h2>
-    <div id="favouritesList">
-      <!-- favourite rows -->
-    </div>
-  </section>
-
-  <!-- Results -->
-  <section id="resultsSection">
-    <h2>
-      <span class="header-line">
-        <span>Search results</span>
-      </span>
-    </h2>
-    <div id="resultsList">
-      <!-- search result rows -->
-    </div>
-  </section>
-
-  <!-- Output -->
-  <section id="outputSection">
-    <h2>
-      <span class="header-line">
-        <span>Accurx text</span>
-        <small class="subhead-hint">
-          Copy &amp; paste into Accurx
-        </small>
-      </span>
-    </h2>
-
-    <textarea id="messageOutput"></textarea>
-    <div class="copy-row">
-      <button id="copyBtn">Copy</button>
-    </div>
-  </section>
-
-  <footer class="footer-note">
-    <div>Made for clinic use.</div>
-  </footer>
+  <div id="toast" role="status" aria-live="polite"></div>
 
   <script src="script.js"></script>
 </body>
