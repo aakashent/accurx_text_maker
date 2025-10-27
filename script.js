@@ -1,34 +1,39 @@
-/* v1.5.0 – keep original layout/behaviour, add:
-   - selectedSummary panel (deselect without searching again)
-   - favourites with persistence + faveSummary panel
-   - NO visual redesign, NO layout change, NO change to category picker / menus / export / 3 item cap
+/* v1.5.0 (2025-10-27)
+   - Keeps ENT categories, list/cards view, theme menu, delete/undo, export etc.
+   - Adds:
+     * selectedSummary panel with ❌ remove (deselect without re-filtering)
+     * favourites with localStorage
+     * favourites panel with Open / ★ / checkbox
+     * checkbox in favourites respects the 3-leaflet limit
 */
 
 const ENT_CATEGORIES = ["Otology","Rhinology","H&N","Paeds"];
 
-// STATE.selectedIds stays as before (array of template IDs currently chosen)
-// We'll also track favourites (urls) and expose helper renderers
 const STATE = {
-  templates: [],
-  filtered: [],
-  selectedIds: [],
-  deletedIds: new Set(),
-  favourites: [] // array of URL strings
+  templates: [],        // all leaflet objects
+  filtered: [],         // after search/category filters
+  selectedIds: [],      // array of template.id that user has ticked
+  deletedIds: new Set(),// ids that are "deleted"/hidden
+  favourites: []        // array of URLs (stable across rebuilds)
 };
 
 const els = {
-  list:           document.getElementById('list'),
-  category:       document.getElementById('category'),
-  search:         document.getElementById('search'),
-  copyBtn:        document.getElementById('copyBtn'),
-  output:         document.getElementById('output'),
-  counter:        document.getElementById('counter'),
-  showDeleted:    document.getElementById('showDeleted'),
-  exportBtn:      document.getElementById('exportBtn'),
-  diag:           document.getElementById('diag'),
-  toast:          document.getElementById('toast'),
+  list:            document.getElementById('list'),
+  category:        document.getElementById('category'),
+  search:          document.getElementById('search'),
+  copyBtn:         document.getElementById('copyBtn'),
+  output:          document.getElementById('output'),
+  counter:         document.getElementById('counter'),
+  showDeleted:     document.getElementById('showDeleted'),
+  exportBtn:       document.getElementById('exportBtn'),
+  diag:            document.getElementById('diag'),
+  toast:           document.getElementById('toast'),
+  viewBtn:         document.getElementById('viewBtn'),
+  viewMenu:        document.getElementById('viewMenu'),
+  themeBtn:        document.getElementById('themeBtn'),
+  themeMenu:       document.getElementById('themeMenu'),
 
-  // NEW: summary panels you add to the HTML in the left column
+  // new summary panels
   selectedSummary: document.getElementById('selectedSummary'),
   faveSummary:     document.getElementById('faveSummary')
 };
@@ -37,7 +42,7 @@ init();
 
 async function init(){
   try{
-    loadFavouritesFromStorage(); // NEW: load favourites first
+    loadFavouritesFromStorage(); // load stars first
     STATE.templates = await loadData();
     els.diag && (els.diag.textContent = `Loaded ${STATE.templates.length} items`);
   }catch(e){
@@ -45,7 +50,7 @@ async function init(){
     return;
   }
 
-  // Fixed category dropdown options
+  // populate category dropdown
   ENT_CATEGORIES.forEach(c=>{
     const o=document.createElement('option');
     o.value=c;
@@ -55,20 +60,18 @@ async function init(){
 
   bindEvents();
 
-  // Default to list mode, then wire menus and category picker
-  document.body.classList.add('list-mode');
+  // default view mode + menus
+  document.body.classList.add('list-mode'); // default list
   setupViewMenu();
   setupThemeMenu();
   setupCategoryPicker();
 
-  applyFilters();
-  renderSelectedSummary(); // NEW
-  renderFaveSummary();     // NEW
+  applyFilters(); // this will renderList() etc.
 }
 
 /* ---------- Data loading ---------- */
 async function loadData(){
-  // 1) templates.json – preferred (array of objects)
+  // 1) try templates.json first
   try{
     const res = await fetch('/accurx_text_maker/templates.json?v=' + Date.now(), { cache:'no-store' });
     if (res.ok){
@@ -79,13 +82,16 @@ async function loadData(){
           url: t.url || t.link || '',
           title: t.title || `Item ${i+1}`,
           text: t.text || t.url || '',
-          categories: [ normaliseCat(t.category || t.categories) || inferCategoryENT(t.title||'', t.text||t.url||'') ]
+          categories: [
+            normaliseCat(t.category || t.categories)
+            || inferCategoryENT(t.title||'', t.text||t.url||'')
+          ]
         }));
       }
     }
-  }catch{/* ignore and fall back */}
+  }catch{/* fall back */}
 
-  // 2) links_titles.json – map { "url": "Title", ... }
+  // 2) fallback to links_titles.json
   const res = await fetch('/accurx_text_maker/links_titles.json?v=' + Date.now(), { cache:'no-store' });
   if(!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
@@ -96,13 +102,12 @@ async function loadData(){
       id: `item-${i}`,
       url: u,
       title: String(title || '').trim() || `Item ${i+1}`,
-      text: u, // so preview isn’t blank; copy will include URL
+      text: u,
       categories: [ inferCategoryENT(title, u) ]
     }));
   }
 
   if (Array.isArray(data)) {
-    // Array of objects – be permissive
     return data.map((t,i)=>toTemplate(t,i));
   }
 
@@ -115,12 +120,17 @@ function toTemplate(t,i){
   const body  = t.text || t.body || t.content || t.linkText || url || '';
   return {
     id: t.id || `item-${i}`,
-    url, title, text: String(body),
-    categories: [ normaliseCat(t.category || t.categories) || inferCategoryENT(title, body || url) ]
+    url,
+    title,
+    text: String(body),
+    categories: [
+      normaliseCat(t.category || t.categories)
+      || inferCategoryENT(title, body || url)
+    ]
   };
 }
 
-/* ---------- UI ---------- */
+/* ---------- UI events ---------- */
 function bindEvents(){
   els.search.addEventListener('input', applyFilters);
   els.category.addEventListener('change', applyFilters);
@@ -129,15 +139,18 @@ function bindEvents(){
   els.exportBtn.addEventListener('click', exportTemplatesJSON);
 }
 
+/* ---------- Filtering & rendering ---------- */
 function applyFilters(){
   const q=(els.search.value||'').toLowerCase().trim();
   const cat=els.category.value||'';
+
   STATE.filtered = STATE.templates.filter(t=>{
     const mt=!q || t.title.toLowerCase().includes(q) || (t.text||'').toLowerCase().includes(q);
     const mc=!cat || normaliseCat(t.categories)===cat;
     const nd=els.showDeleted.checked || !STATE.deletedIds.has(t.id);
     return mt && mc && nd;
   });
+
   renderList();
 }
 
@@ -146,10 +159,10 @@ function renderList(){
   const inListMode = document.body.classList.contains('list-mode');
 
   if (!inListMode) {
-    // Cards view: flat
+    // cards view: flat list
     STATE.filtered.forEach(t => els.list.appendChild(makeCard(t)));
   } else {
-    // List view: group by ENT order
+    // list view: group by ENT order
     const order = ["Otology","Rhinology","H&N","Paeds"];
     const groups = new Map(order.map(c => [c, []]));
     STATE.filtered.forEach(t => {
@@ -168,59 +181,87 @@ function renderList(){
     }
   }
 
-  // after rendering cards, update composer + summaries
   updateComposer();
   renderSelectedSummary();
   renderFaveSummary();
 }
 
-/* ---------- CARD BUILDER WITH NEW FAV + REMOVE SUPPORT ---------- */
+/* ---------- building each card (main list) ---------- */
 function makeCard(t){
-  const li = document.createElement('li'); 
+  const li = document.createElement('li');
   li.className = 'card';
 
   const checked   = STATE.selectedIds.includes(t.id);
   const disabled  = !checked && STATE.selectedIds.length >= 3;
   const cat       = normaliseCat(t.categories) || 'H&N';
-  const isFaved   = isFave(t.url); // NEW
+  const isFaved   = isFave(t.url);
 
   li.innerHTML = `
     <div class="card-inner">
       <div class="card-head">
-        <input type="checkbox" class="selbox" value="${t.id}" ${checked?'checked':''} ${disabled?'disabled':''}/>
-        <button class="faveBtn" data-url="${t.url}" title="Favourite">
-          ${isFaved ? '★' : '☆'}
-        </button>
+        <input
+          type="checkbox"
+          class="selbox"
+          value="${t.id}"
+          ${checked ? 'checked' : ''}
+          ${disabled ? 'disabled' : ''}
+          aria-label="Include in message"
+        />
+        <button
+          class="faveBtn"
+          data-url="${t.url}"
+          title="Favourite / unfavourite"
+        >${isFaved ? '★' : '☆'}</button>
       </div>
+
       <div class="meta">
         <h3>${escapeHTML(t.title||'')}</h3>
         <div class="tags">
-          <span class="tag tag--${cat}" data-cat="${cat}" data-id="${t.id}" role="button" tabindex="0" title="Click to change category">${cat}</span>
+          <span
+            class="tag tag--${cat}"
+            data-cat="${cat}"
+            data-id="${t.id}"
+            role="button"
+            tabindex="0"
+            title="Click to change category"
+          >${cat}</span>
         </div>
         <pre class="snippet">${escapeHTML(snippet(t.text||''))}</pre>
       </div>
+
       <div class="card-actions">
-        <a class="icon-btn" href="${t.url||'#'}" target="_blank" rel="noopener">Open</a>
+        <a class="icon-btn"
+           href="${t.url||'#'}"
+           target="_blank"
+           rel="noopener">Open</a>
         <button class="icon-btn delBtn" data-id="${t.id}">
           ${STATE.deletedIds.has(t.id)?'Undo':'Delete'}
         </button>
       </div>
     </div>`;
 
-  // checkbox behaviour (same logic as before, but we centralise updates so summaries/composer stay in sync)
+  /* checkbox behaviour */
   li.querySelector('.selbox').addEventListener('change', e=>{
     const id = e.target.value;
+
     if (e.target.checked){
       if (!STATE.selectedIds.includes(id)){
-        STATE.selectedIds.push(id);
+        if (STATE.selectedIds.length < 3){
+          STATE.selectedIds.push(id);
+        } else {
+          // cap reached, revert box + toast
+          e.target.checked = false;
+          toast('Limit is 3 leaflets');
+        }
       }
     } else {
       STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
     }
-    renderList(); // rerender to refresh disabled states, counters, summaries
+
+    renderList(); // refresh disabled states, counters, summaries, preview
   });
 
-  // delete / undelete
+  /* delete / undo */
   li.querySelector('.delBtn').addEventListener('click', ()=>{
     if (STATE.deletedIds.has(t.id)){
       STATE.deletedIds.delete(t.id);
@@ -228,22 +269,22 @@ function makeCard(t){
     } else {
       STATE.deletedIds.add(t.id);
       toast('Deleted');
-      // Also if it was selected, remove from selection (keeps things consistent)
+      // also unselect if it was selected
       STATE.selectedIds = STATE.selectedIds.filter(x => x !== t.id);
     }
-    applyFilters(); // re-filter + rerender
+    applyFilters(); // will call renderList
   });
 
-  // favourite toggle
+  /* favourite star */
   li.querySelector('.faveBtn').addEventListener('click', ()=>{
     toggleFave(t.url);
-    renderList(); // refresh stars and favourite summary
+    renderList(); // refresh cards + favourites panel
   });
 
   return li;
 }
 
-/* ---------- Composer text on the right ---------- */
+/* ---------- composer (right pane) ---------- */
 function updateComposer(){
   const chosen = STATE.selectedIds
     .map(id => STATE.templates.find(t => t.id === id))
@@ -261,14 +302,10 @@ function updateComposer(){
   els.counter.textContent = `${STATE.selectedIds.length}/3 selected`;
 }
 
-/* ---------- NEW: Selected summary panel ---------- */
-/* Shows the currently chosen items and lets you remove them directly,
-   without having to re-find them in the filtered list.
-*/
+/* ---------- selectedSummary panel ---------- */
 function renderSelectedSummary(){
   if (!els.selectedSummary) return;
 
-  // Build list from current STATE.selectedIds
   const chosen = STATE.selectedIds
     .map(id => STATE.templates.find(t => t.id === id))
     .filter(Boolean);
@@ -281,26 +318,24 @@ function renderSelectedSummary(){
   els.selectedSummary.innerHTML = chosen.map(t => `
     <li class="chosen-row">
       <span class="chosen-title">${escapeHTML(t.title||'')}</span>
-      <button class="chosen-remove" data-id="${t.id}" title="Remove">✕</button>
+      <button
+        class="chosen-remove"
+        data-id="${t.id}"
+        title="Remove from message"
+      >✕</button>
     </li>
   `).join('');
 
-  // hook up remove buttons
   els.selectedSummary.querySelectorAll('.chosen-remove').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.getAttribute('data-id');
       STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
-      // after removal, rerender everything (disables checkboxes etc.)
-      renderList();
+      renderList(); // sync checkboxes + preview etc.
     });
   });
 }
 
-/* ---------- FAVOURITES ---------- */
-/* We favourite by URL, not by ID, because your IDs are generated and may shift
-   if templates.json is rebuilt. URLs should be relatively stable.
-*/
-
+/* ---------- favourites ---------- */
 function loadFavouritesFromStorage(){
   try{
     const raw = localStorage.getItem('accurx_faves');
@@ -310,15 +345,12 @@ function loadFavouritesFromStorage(){
     STATE.favourites = [];
   }
 }
-
 function saveFavouritesToStorage(){
   localStorage.setItem('accurx_faves', JSON.stringify(STATE.favourites));
 }
-
 function isFave(url){
   return STATE.favourites.includes(url);
 }
-
 function toggleFave(url){
   if (!url) return;
   if (isFave(url)){
@@ -329,85 +361,99 @@ function toggleFave(url){
   saveFavouritesToStorage();
 }
 
-/* faveSummary = list of favourites with:
-   - star button (to unstar)
-   - add/remove button to toggle in/out of STATE.selectedIds
-*/
+/* favourites panel: Open / ★ / checkbox */
 function renderFaveSummary(){
   if (!els.faveSummary) return;
 
   if (!STATE.favourites.length){
-    els.faveSummary.innerHTML = `<li class="hint-row">No favourites yet. Tap ☆ to add one.</li>`;
+    els.faveSummary.innerHTML = `<li class="hint-row">No favourites yet. Tap ☆ on an item to add it.</li>`;
     return;
   }
 
-  // Map favourite URLs back to template objects
   const favObjs = STATE.favourites
     .map(u => STATE.templates.find(t => t.url === u))
     .filter(Boolean)
     .sort((a,b)=>a.title.localeCompare(b.title));
 
   if (!favObjs.length){
-    els.faveSummary.innerHTML = `<li class="hint-row">No favourites yet. Tap ☆ to add one.</li>`;
+    els.faveSummary.innerHTML = `<li class="hint-row">No favourites yet. Tap ☆ on an item to add it.</li>`;
     return;
   }
 
-  els.faveSummary.innerHTML = favObjs.map(t => `
-    <li class="fave-row">
-      <div class="fave-main">
-        <span class="fave-title">${escapeHTML(t.title||'')}</span>
-      </div>
-      <div class="fave-actions">
-        <button class="fave-toggle" data-url="${t.url}" title="Favourite">
-          ★
-        </button>
-        <button class="fave-addrem" data-id="${t.id}" title="Add / Remove">
-          ${STATE.selectedIds.includes(t.id) ? 'Remove' : 'Add'}
-        </button>
-      </div>
-    </li>
-  `).join('');
+  els.faveSummary.innerHTML = favObjs.map(t => {
+    const isChecked  = STATE.selectedIds.includes(t.id);
+    const disabled   = !isChecked && STATE.selectedIds.length >= 3;
+    return `
+      <li class="fave-row">
+        <div class="fave-main">
+          <span class="fave-title">${escapeHTML(t.title||'')}</span>
+        </div>
+        <div class="fave-actions-row">
+          <a
+            class="fave-open icon-btn"
+            href="${t.url || '#'}"
+            target="_blank"
+            rel="noopener"
+            title="Open link in new tab"
+          >Open</a>
 
-  // hook up fave toggle (★)
+          <button
+            class="fave-toggle"
+            data-url="${t.url}"
+            title="Favourite / unfavourite"
+          >★</button>
+
+          <input
+            type="checkbox"
+            class="fave-check"
+            data-id="${t.id}"
+            ${isChecked ? 'checked' : ''}
+            ${disabled ? 'disabled' : ''}
+            aria-label="Include in message"
+          />
+        </div>
+      </li>
+    `;
+  }).join('');
+
+  // star toggle (★)
   els.faveSummary.querySelectorAll('.fave-toggle').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const url = btn.getAttribute('data-url');
       toggleFave(url);
-      renderList(); // refresh everything, including faveSummary itself
+      renderList();
     });
   });
 
-  // hook up Add/Remove
-  els.faveSummary.querySelectorAll('.fave-addrem').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const id = btn.getAttribute('data-id');
-      toggleSelectedById(id);
+  // checkbox toggle ([ ])
+  els.faveSummary.querySelectorAll('.fave-check').forEach(box=>{
+    box.addEventListener('change', ()=>{
+      const id = box.getAttribute('data-id');
+
+      if (box.checked){
+        if (!STATE.selectedIds.includes(id)){
+          if (STATE.selectedIds.length < 3){
+            STATE.selectedIds.push(id);
+          } else {
+            box.checked = false;
+            toast('Limit is 3 leaflets');
+          }
+        }
+      } else {
+        STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
+      }
+
       renderList();
     });
   });
 }
 
-/* Toggle selection by ID (used in favourites Add/Remove button) */
-function toggleSelectedById(id){
-  if (STATE.selectedIds.includes(id)){
-    STATE.selectedIds = STATE.selectedIds.filter(x => x !== id);
-  } else {
-    // respect the 3-item cap
-    if (STATE.selectedIds.length < 3){
-      STATE.selectedIds.push(id);
-    } else {
-      toast('Limit is 3 leaflets');
-    }
-  }
-}
-
-/* ---------- Actions ---------- */
+/* ---------- copy / export ---------- */
 async function copyOutput(){
   try{
     await navigator.clipboard.writeText(els.output.value);
     toast('Copied to clipboard');
-  }
-  catch{
+  } catch {
     els.output.select();
     document.execCommand('copy');
     toast('Copied');
@@ -420,8 +466,11 @@ function exportTemplatesJSON(){
     .map(t=>({
       url: t.url || '',
       title: t.title || '',
-      category: normaliseCat(t.categories) || inferCategoryENT(t.title||'', t.text||t.url||'')
+      category:
+        normaliseCat(t.categories)
+        || inferCategoryENT(t.title||'', t.text||t.url||'')
     }));
+
   const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
@@ -432,13 +481,13 @@ function exportTemplatesJSON(){
   toast('Downloaded templates.json');
 }
 
-/* ---------- View & Theme menus (anchored under their buttons) ---------- */
+/* ---------- view & theme menus ---------- */
 function setupViewMenu(){
-  const btn  = document.getElementById('viewBtn');
-  const menu = document.getElementById('viewMenu');
+  const btn  = els.viewBtn;
+  const menu = els.viewMenu;
   if (!btn || !menu) return;
 
-  // Anchor the menu under the button
+  // wrap in .menu-anchor if not already
   if (!btn.parentElement.classList.contains('menu-anchor')) {
     const wrap = document.createElement('span');
     wrap.className = 'menu-anchor';
@@ -452,11 +501,11 @@ function setupViewMenu(){
   const apply = (mode) => {
     document.body.classList.toggle('list-mode', mode === 'list');
     localStorage.setItem('xview', mode);
-    btn.textContent = `View: ${mode === 'list' ? 'List' : 'Cards'}`;
+    btn.textContent = `View`;
     applyFilters();
   };
 
-  // Restore saved (default list)
+  // restore saved
   apply(localStorage.getItem('xview') || 'list');
 
   btn.addEventListener('click', (e)=>{
@@ -481,8 +530,8 @@ function setupViewMenu(){
 }
 
 function setupThemeMenu(){
-  const btn  = document.getElementById('themeBtn');
-  const menu = document.getElementById('themeMenu');
+  const btn  = els.themeBtn;
+  const menu = els.themeMenu;
   if (!btn || !menu) return;
 
   if (!btn.parentElement.classList.contains('menu-anchor')) {
@@ -503,8 +552,9 @@ function setupThemeMenu(){
       document.documentElement.dataset.theme = mode;
     }
     localStorage.setItem(KEY, mode);
-    btn.textContent = `Theme: ${mode[0].toUpperCase()+mode.slice(1)}`;
+    btn.textContent = `Theme`;
   };
+
   apply(localStorage.getItem(KEY) || 'system');
 
   btn.addEventListener('click', (e)=>{
@@ -528,9 +578,9 @@ function setupThemeMenu(){
   });
 }
 
-/* ---------- Category picker (chip click to open mini menu) ---------- */
+/* ---------- category picker chip ---------- */
 function setupCategoryPicker(){
-  // Build once
+  // build a single floating menu we reuse
   let menu = document.getElementById('catMenu');
   if (!menu){
     menu = document.createElement('div');
@@ -542,10 +592,9 @@ function setupCategoryPicker(){
       .join('');
     document.body.appendChild(menu);
 
-    // Choose a category
+    // choose a category
     menu.addEventListener('click', (e)=>{
-      const btn = e.target.closest('button'); 
-      if (!btn) return;
+      const btn = e.target.closest('button'); if (!btn) return;
       const id  = menu.dataset.targetId;
       const item = STATE.templates.find(t => t.id === id);
       if (item){ item.categories = [btn.dataset.cat]; }
@@ -554,7 +603,7 @@ function setupCategoryPicker(){
     });
   }
 
-  // Open on chip click
+  // open on chip click
   els.list.addEventListener('click', (e)=>{
     const tag = e.target.closest('.tag[data-id]');
     if (!tag) return;
@@ -562,7 +611,7 @@ function setupCategoryPicker(){
     openCatMenu(tag, menu);
   });
 
-  // Keyboard activation
+  // keyboard open
   els.list.addEventListener('keydown', (e)=>{
     const tag = e.target.closest('.tag[data-id]');
     if (!tag) return;
@@ -572,25 +621,25 @@ function setupCategoryPicker(){
     }
   });
 
-  // Close on outside click
-  document.addEventListener('click', ()=>{ menu.hidden = true; });
+  // close on outside click
+  document.addEventListener('click', ()=>{
+    menu.hidden = true;
+  });
 }
 
 function openCatMenu(tag, menu){
   menu.dataset.targetId = tag.dataset.id;
-  // Pre-highlight current
   const current = tag.dataset.cat;
   menu.querySelectorAll('button').forEach(b => {
     b.style.fontWeight = (b.dataset.cat === current ? '700' : '400');
   });
-  // Place under the tag
   const r = tag.getBoundingClientRect();
   menu.style.left = r.left + 'px';
   menu.style.top  = (r.bottom + 4 + window.scrollY) + 'px';
   menu.hidden = false;
 }
 
-/* ---------- Helpers ---------- */
+/* ---------- helpers ---------- */
 function snippet(text,max=160){
   const s=(text||'').replace(/\s+/g,' ').trim();
   return s.length>max? s.slice(0,max-1)+'…':s;
@@ -610,23 +659,22 @@ function toast(msg){
 }
 
 function showFatal(msg){
-  els.list.innerHTML=`<li style="padding:12px;border:1px solid #e3e3e3;border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
+  els.list.innerHTML=`<li style="padding:12px;border:1px solid var(--line);border-radius:8px">⚠️ ${escapeHTML(msg)}</li>`;
   els.diag && (els.diag.textContent = msg);
 }
 
-// ENT-only inference with Paeds override
+/* ENT category inference with Paeds override */
 function inferCategoryENT(title, body){
   const t=`${title} ${body}`.toLowerCase();
   const has = kws => kws.some(k => t.includes(k));
   // Paeds override
   if (has(['paediatric','paediatrics','paeds','child','children','toddler','infant','neonate','school-age','young person','your child'])) return 'Paeds';
-  // Otology (ear + balance)
+  // Otology
   if (has(['ear','pinna','hearing','deafness','tinnitus','vertigo','otic','otosclerosis','otitis','eardrum','tympanic','mastoid','cholesteatoma','earwax','grommet','meniere','bppv','labyrinthitis','cawthorne-cooksey'])) return 'Otology';
-  // Rhinology (nose & sinuses)
+  // Rhinology
   if (has(['nose','nasal','sinus','sinuses','rhino','rhinitis','sinusitis','septum','septal','polyps','epistaxis','smell','olfactory','turbinates','rhinoplasty','nasal irrigation','nasal sprays','nasal drops','nasal ointment'])) return 'Rhinology';
   // Head & Neck
   if (has(['head and neck','larynx','laryngeal','voice','hoarseness','thyroid','parotid','salivary','gland','neck','tonsillectomy','microlaryngoscopy','oesophagoscopy','pharyngoscopy','hpv','cancer','facial skin lesions','thyroglossal','neck lump','submandibular'])) return 'H&N';
-  // Default
   return 'H&N';
 }
 
@@ -638,7 +686,6 @@ function normaliseCat(cats){
   if(/^rhin/.test(v) || ['nose','sinus','sinuses'].includes(v)) return 'Rhinology';
   if(v==='h&n' || /head|neck/.test(v)) return 'H&N';
   if(/^paed/.test(v) || /child/.test(v)) return 'Paeds';
-  // If it’s already a valid label
   if (ENT_CATEGORIES.includes(s)) return s;
   return '';
 }
